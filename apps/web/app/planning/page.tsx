@@ -83,6 +83,10 @@ export default function PlanningPage() {
                     }
                     break;
                   
+                  case "analyzing":
+                    setStatus("Analyzing requirements...");
+                    break;
+                  
                   case "generating_options":
                     setStatus("Generating architecture options...");
                     break;
@@ -95,7 +99,7 @@ export default function PlanningPage() {
                     break;
                   
                   case "reviewing":
-                    setStatus(`Critical review ${data.iteration}/10...`);
+                    setStatus(`Performing critical review ${data.iteration}/10...`);
                     break;
                   
                   case "finalizing":

@@ -110,15 +110,19 @@ async def create_plan_stream(request: ProjectRequest):
         
         await cache_client.increment_rate_limit(user_id)
         
+        # Analyzing requirements
+        yield f"data: {json.dumps({'status': 'analyzing', 'progress': 5})}\n\n"
+        
         # Generate options
         yield f"data: {json.dumps({'status': 'generating_options', 'progress': 10})}\n\n"
         options = await claude_client.generate_architecture_options(request)
-        yield f"data: {json.dumps({'status': 'options_generated', 'progress': 30, 'options': [o.model_dump() for o in options]})}\n\n"
+        yield f"data: {json.dumps({'status': 'options_generated', 'progress': 25, 'options': [o.model_dump() for o in options]})}\n\n"
         
-        # Reviews
+        # Reviews (25% to 85% = 60% total, 6% per review)
         reviews = []
         for i in range(1, 11):
-            yield f"data: {json.dumps({'status': 'reviewing', 'progress': 30 + (i * 5), 'iteration': i})}\n\n"
+            progress = 25 + (i * 6)
+            yield f"data: {json.dumps({'status': 'reviewing', 'progress': progress, 'iteration': i})}\n\n"
             review = await claude_client.perform_critical_review(request, options, i)
             reviews.append(review)
         
