@@ -7,9 +7,9 @@ else
     echo "⚠️  Docker not found - Redis not started (caching disabled)"
 fi
 
-# Start backend
+# Start backend with testing tier (cheapest models)
 cd apps/backend/src
-PYTHONPATH=. uv run python main.py &
+AI_PROVIDER=bedrock DEPLOYMENT_TIER=testing AWS_REGION=us-east-1 PYTHONPATH=. uv run python main.py &
 BACKEND_PID=$!
 cd ../../..
 
