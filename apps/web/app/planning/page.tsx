@@ -31,76 +31,98 @@ export default function PlanningPage() {
     const request = JSON.parse(projectRequest);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-    // Use EventSource for streaming
-    const eventSource = new EventSource(
-      `${apiUrl}/api/v1/plan/stream?` + new URLSearchParams({
-        data: JSON.stringify(request)
-      })
-    );
-
-    eventSource.onmessage = (event) => {
+    // Use fetch with streaming instead of EventSource for POST
+    const fetchStream = async () => {
       try {
-        const data: ProgressUpdate = JSON.parse(event.data);
-        
-        if (data.error) {
-          setError(data.error);
-          setStatus("Error occurred");
-          eventSource.close();
-          return;
+        const response = await fetch(`${apiUrl}/api/v1/plan/stream`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        setProgress(data.progress);
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
 
-        switch (data.status) {
-          case "cached":
-            setStatus("Found cached plan!");
-            if (data.plan) {
-              sessionStorage.setItem("projectPlan", JSON.stringify(data.plan));
-              setTimeout(() => router.push(`/results/${data.plan.project_id}`), 1000);
-            }
-            break;
-          
-          case "generating_options":
-            setStatus("Generating architecture options...");
-            break;
-          
-          case "options_generated":
-            setStatus("Architecture options generated!");
-            if (data.options) {
-              setOptions(data.options);
-            }
-            break;
-          
-          case "reviewing":
-            setStatus(`Critical review ${data.iteration}/10...`);
-            break;
-          
-          case "finalizing":
-            setStatus("Finalizing recommendation...");
-            break;
-          
-          case "completed":
-            setStatus("Plan completed!");
-            if (data.plan) {
-              sessionStorage.setItem("projectPlan", JSON.stringify(data.plan));
-              setTimeout(() => router.push(`/results/${data.plan.project_id}`), 1000);
-            }
-            break;
+        if (!reader) {
+          throw new Error("No reader available");
         }
-      } catch (err) {
-        console.error("Error parsing event:", err);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                if (data.error) {
+                  setError(data.error);
+                  setStatus("Error occurred");
+                  return;
+                }
+
+                setProgress(data.progress);
+
+                switch (data.status) {
+                  case "cached":
+                    setStatus("Found cached plan!");
+                    if (data.plan) {
+                      sessionStorage.setItem("projectPlan", JSON.stringify(data.plan));
+                      setTimeout(() => router.push(`/results/${data.plan.project_id}`), 1000);
+                    }
+                    break;
+                  
+                  case "generating_options":
+                    setStatus("Generating architecture options...");
+                    break;
+                  
+                  case "options_generated":
+                    setStatus("Architecture options generated!");
+                    if (data.options) {
+                      setOptions(data.options);
+                    }
+                    break;
+                  
+                  case "reviewing":
+                    setStatus(`Critical review ${data.iteration}/10...`);
+                    break;
+                  
+                  case "finalizing":
+                    setStatus("Finalizing recommendation...");
+                    break;
+                  
+                  case "completed":
+                    setStatus("Plan completed!");
+                    if (data.plan) {
+                      sessionStorage.setItem("projectPlan", JSON.stringify(data.plan));
+                      setTimeout(() => router.push(`/results/${data.plan.project_id}`), 1000);
+                    }
+                    break;
+                }
+              } catch (err) {
+                console.error("Error parsing line:", err);
+              }
+            }
+          }
+        }
+      } catch (err: any) {
+        setError(err.message || "Connection error. Please try again.");
+        setStatus("Error");
       }
     };
 
-    eventSource.onerror = () => {
-      setError("Connection error. Please try again.");
-      setStatus("Error");
-      eventSource.close();
-    };
-
-    return () => {
-      eventSource.close();
-    };
+    fetchStream();
   }, [router]);
 
   return (
