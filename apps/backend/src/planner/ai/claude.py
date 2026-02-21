@@ -1,5 +1,6 @@
 import anthropic
 import json
+import boto3
 from typing import AsyncIterator
 from ..config import settings
 from ..models.project import ProjectRequest, ArchitectureOption, ProjectPlan, CostBreakdown
@@ -8,10 +9,53 @@ import uuid
 
 
 class ClaudeClient:
-    """Client for Claude AI API"""
+    """Client for Claude AI API (Anthropic or Bedrock)"""
     
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        if settings.ai_provider == "bedrock":
+            session = boto3.Session(
+                profile_name=settings.aws_profile if settings.aws_profile else None,
+                region_name=settings.aws_region
+            )
+            self.client = session.client("bedrock-runtime")
+            self.use_bedrock = True
+        else:
+            self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            self.use_bedrock = False
+    
+    def _call_claude(self, prompt: str, model: str, max_tokens: int = None) -> str:
+        """Call Claude via Anthropic or Bedrock"""
+        max_tokens = max_tokens or settings.max_tokens
+        
+        if self.use_bedrock:
+            # Map model names to Bedrock IDs
+            model_map = {
+                "claude-opus-4-20250514": "anthropic.claude-opus-4-20250514-v1:0",
+                "claude-sonnet-4-20250514": "anthropic.claude-sonnet-4-20250514-v1:0",
+                "claude-haiku-4-20250514": "anthropic.claude-haiku-4-20250514-v1:0",
+            }
+            bedrock_model = model_map.get(model, model_map["claude-sonnet-4-20250514"])
+            
+            response = self.client.invoke_model(
+                modelId=bedrock_model,
+                body=json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": max_tokens,
+                    "temperature": settings.temperature,
+                    "messages": [{"role": "user", "content": prompt}]
+                })
+            )
+            
+            result = json.loads(response["body"].read())
+            return result["content"][0]["text"]
+        else:
+            response = self.client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                temperature=settings.temperature,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.content[0].text
     
     async def generate_architecture_options(
         self, 
@@ -21,15 +65,7 @@ class ClaudeClient:
         """Generate 3-5 architecture options based on requirements"""
         
         prompt = self._build_architecture_prompt(request)
-        
-        response = self.client.messages.create(
-            model=model,
-            max_tokens=settings.max_tokens,
-            temperature=settings.temperature,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        
-        content = response.content[0].text
+        content = self._call_claude(prompt, model)
         options = self._parse_architecture_options(content)
         return options
     
@@ -57,18 +93,12 @@ class ClaudeClient:
         review_type = review_types[iteration - 1] if iteration <= 10 else "General Review"
         
         prompt = self._build_review_prompt(request, options, review_type)
-        
-        response = self.client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2048,
-            temperature=0.7,
-            messages=[{"role": "user", "content": prompt}]
-        )
+        content = self._call_claude(prompt, "claude-sonnet-4-20250514", 2048)
         
         return {
             "iteration": iteration,
             "review_type": review_type,
-            "findings": response.content[0].text
+            "findings": content
         }
     
     async def generate_final_recommendation(
@@ -80,15 +110,7 @@ class ClaudeClient:
         """Generate final recommendation after all reviews"""
         
         prompt = self._build_recommendation_prompt(request, options, reviews)
-        
-        response = self.client.messages.create(
-            model="claude-opus-4-20250514",
-            max_tokens=4096,
-            temperature=0.5,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        
-        content = response.content[0].text
+        content = self._call_claude(prompt, "claude-opus-4-20250514")
         plan = self._parse_final_plan(request, options, content)
         return plan
     
