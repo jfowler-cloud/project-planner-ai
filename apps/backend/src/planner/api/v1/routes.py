@@ -116,7 +116,7 @@ async def create_plan_stream(request: ProjectRequest):
         # Generate options
         yield f"data: {json.dumps({'status': 'generating_options', 'progress': 10})}\n\n"
         options = await claude_client.generate_architecture_options(request)
-        yield f"data: {json.dumps({'status': 'options_generated', 'progress': 25, 'options': [o.model_dump() for o in options]})}\n\n"
+        yield f"data: {json.dumps({'status': 'options_generated', 'progress': 25, 'options': [o.model_dump(mode='json') for o in options]})}\n\n"
         
         # Reviews (25% to 85% = 60% total, 6% per review)
         reviews = []
@@ -131,9 +131,10 @@ async def create_plan_stream(request: ProjectRequest):
         plan = await claude_client.generate_final_recommendation(request, options, reviews)
         
         # Cache
-        await cache_client.cache_plan(request_dict, plan.model_dump())
+        plan_dict = plan.model_dump(mode='json')
+        await cache_client.cache_plan(request_dict, plan_dict)
         
-        yield f"data: {json.dumps({'status': 'completed', 'progress': 100, 'plan': plan.model_dump()})}\n\n"
+        yield f"data: {json.dumps({'status': 'completed', 'progress': 100, 'plan': plan_dict})}\n\n"
     
     return StreamingResponse(generate_progress(), media_type="text/event-stream")
 
