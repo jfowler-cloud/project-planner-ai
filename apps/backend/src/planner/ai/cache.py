@@ -13,7 +13,13 @@ class CacheClient:
     
     async def connect(self):
         """Connect to Redis"""
-        self.redis = await redis.from_url(settings.redis_url, decode_responses=True)
+        try:
+            self.redis = await redis.from_url(settings.redis_url, decode_responses=True)
+            # Test connection
+            await self.redis.ping()
+        except Exception as e:
+            print(f"⚠️  Redis connection failed: {e}. Caching disabled.")
+            self.redis = None
     
     async def disconnect(self):
         """Disconnect from Redis"""
