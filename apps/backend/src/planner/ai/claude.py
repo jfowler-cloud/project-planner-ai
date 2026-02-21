@@ -22,6 +22,26 @@ class ClaudeClient:
         else:
             self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
             self.use_bedrock = False
+        
+        # Model selection based on deployment tier
+        self.model_config = {
+            "testing": {
+                "planning": "claude-3-haiku-20240307",
+                "review": "claude-3-haiku-20240307",
+                "recommendation": "claude-3-haiku-20240307"
+            },
+            "optimized": {
+                "planning": "claude-sonnet-4-20250514",
+                "review": "claude-3-haiku-20240307",
+                "recommendation": "claude-sonnet-4-20250514"
+            },
+            "premium": {
+                "planning": "claude-opus-4-20250514",
+                "review": "claude-sonnet-4-20250514",
+                "recommendation": "claude-opus-4-20250514"
+            }
+        }
+        self.models = self.model_config[settings.deployment_tier]
     
     def _call_claude(self, prompt: str, model: str, max_tokens: int = None) -> str:
         """Call Claude via Anthropic or Bedrock"""
@@ -33,8 +53,9 @@ class ClaudeClient:
                 "claude-opus-4-20250514": "anthropic.claude-opus-4-20250514-v1:0",
                 "claude-sonnet-4-20250514": "anthropic.claude-sonnet-4-20250514-v1:0",
                 "claude-haiku-4-20250514": "anthropic.claude-haiku-4-20250514-v1:0",
+                "claude-3-haiku-20240307": "anthropic.claude-3-haiku-20240307-v1:0",
             }
-            bedrock_model = model_map.get(model, model_map["claude-sonnet-4-20250514"])
+            bedrock_model = model_map.get(model, model)
             
             response = self.client.invoke_model(
                 modelId=bedrock_model,
@@ -56,14 +77,17 @@ class ClaudeClient:
                 messages=[{"role": "user", "content": prompt}]
             )
             return response.content[0].text
+            )
+            return response.content[0].text
     
     async def generate_architecture_options(
         self, 
         request: ProjectRequest,
-        model: str = "claude-opus-4-20250514"
+        model: str = None
     ) -> list[ArchitectureOption]:
         """Generate 3-5 architecture options based on requirements"""
         
+        model = model or self.models["planning"]
         prompt = self._build_architecture_prompt(request)
         content = self._call_claude(prompt, model)
         options = self._parse_architecture_options(content)
@@ -93,7 +117,7 @@ class ClaudeClient:
         review_type = review_types[iteration - 1] if iteration <= 10 else "General Review"
         
         prompt = self._build_review_prompt(request, options, review_type)
-        content = self._call_claude(prompt, "claude-sonnet-4-20250514", 2048)
+        content = self._call_claude(prompt, self.models["review"], 2048)
         
         return {
             "iteration": iteration,
@@ -110,7 +134,7 @@ class ClaudeClient:
         """Generate final recommendation after all reviews"""
         
         prompt = self._build_recommendation_prompt(request, options, reviews)
-        content = self._call_claude(prompt, "claude-opus-4-20250514")
+        content = self._call_claude(prompt, self.models["recommendation"])
         plan = self._parse_final_plan(request, options, content)
         return plan
     

@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     api_version: str = "0.1.0"
     debug: bool = False
     
+    # Deployment tier (testing/optimized/premium)
+    deployment_tier: Literal["testing", "optimized", "premium"] = "testing"
+    
     # AI Provider
     ai_provider: Literal["anthropic", "bedrock"] = "bedrock"
     
