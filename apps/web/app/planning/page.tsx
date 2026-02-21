@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ScaffoldIntegration from "@/components/ScaffoldIntegration";
 
 interface ProgressUpdate {
   status: string;
@@ -183,6 +184,9 @@ export default function PlanningPage() {
           )}
         </div>
       </div>
+
+      {/* Scaffold AI Integration */}
+      <ScaffoldIntegration />
     </div>
   );
 }

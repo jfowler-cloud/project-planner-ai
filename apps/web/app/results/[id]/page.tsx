@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ScaffoldIntegration from "@/components/ScaffoldIntegration";
 
 interface ProjectPlan {
   project_id: string;
@@ -273,6 +274,9 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
       </div>
+
+      {/* Scaffold AI Integration */}
+      <ScaffoldIntegration projectPlan={plan} />
     </div>
   );
 }
