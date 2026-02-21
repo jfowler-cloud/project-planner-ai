@@ -44,9 +44,13 @@ Most developers either:
 
 ## How It Works
 
-### Step 1: Answer Simple Questions
+### Complete Workflow: Plan → Build → Deploy
 
-**Project Basics:**
+**Project Planner AI** and **Scaffold AI** work together seamlessly:
+
+### Step 1: Plan Your Project (Project Planner AI)
+
+**Answer Simple Questions:**
 - What are you building?
 - Who will use it?
 - What's your timeline?
@@ -68,32 +72,60 @@ Most developers either:
    - Scalability review
    - Reliability assessment
    - Performance analysis
-   - And more...
 3. Recommends best option with justification
 
 **Progress shown in real-time with explanations**
 
-### Step 3: Review & Customize
+### Step 3: Review & Export
 
 - See recommended architecture
 - Compare alternative options
-- Adjust technologies
-- Add custom requirements
-- Request additional AI review
+- Review cost breakdowns
+- Check security requirements
+- **Click "Open in Scaffold AI" →**
 
-### Step 4: Generate Project
+### Step 4: Build Implementation (Scaffold AI)
 
-**Automatically creates:**
-- ✅ Private GitHub repository
-- ✅ Comprehensive README
-- ✅ Architecture diagrams (Mermaid)
-- ✅ AI Development SOP
-- ✅ Project structure
-- ✅ CI/CD templates
-- ✅ Security scanning config
-- ✅ Pre-commit hooks
-- ✅ Testing setup
-- ✅ Cost calculator
+**Automatically receives your plan and generates:**
+- ✅ Starter code (backend + frontend)
+- ✅ Infrastructure as Code (Terraform/CDK)
+- ✅ Security scanning configuration
+- ✅ CI/CD pipelines
+- ✅ Database schemas
+- ✅ API documentation
+- ✅ Docker configurations
+
+### Step 5: Deploy to AWS
+
+**One-click deployment:**
+- Scaffold AI deploys your infrastructure
+- Sets up monitoring and logging
+- Configures auto-scaling
+- Implements security best practices
+
+---
+
+## Why Use Both Together?
+
+### Project Planner AI (Strategic Planning)
+- 🎯 **Focus**: Architecture decisions and planning
+- 🤖 **AI-Powered**: Claude analyzes requirements deeply
+- 💰 **Cost Analysis**: Detailed breakdowns and projections
+- 🔍 **Multiple Options**: Compare 3-5 approaches
+- 📊 **Risk Assessment**: Identify issues early
+
+### Scaffold AI (Tactical Implementation)
+- ⚡ **Focus**: Code generation and deployment
+- 🚀 **Fast**: Generate complete projects in minutes
+- 🔒 **Secure**: Built-in security scanning
+- 📦 **Complete**: Infrastructure + code + CI/CD
+- ☁️ **AWS-Ready**: Deploy directly to AWS
+
+### Together = Complete Solution
+1. **Plan** with deep AI analysis (Planner)
+2. **Build** with generated code (Scaffold)
+3. **Deploy** to production (Scaffold)
+4. **Iterate** quickly on both
 
 ---
 
@@ -325,30 +357,55 @@ project-planner-ai/
 
 ---
 
-## Getting Started
+## Quick Start Guide
 
-### Prerequisites
-- Python 3.12+
-- Node.js 20+
-- Docker (for Redis)
-- Anthropic API key
-
-### Quick Start
+### Option 1: Complete Workflow (Recommended)
 
 ```bash
-# 1. Setup (first time only)
-./setup.sh
+# 1. Plan your project
+Visit: https://project-planner-ai.com
+- Complete 3-step questionnaire
+- Review AI-generated architecture options
+- Get cost estimates and security checklist
 
-# 2. Add your API key
-# Edit apps/backend/.env and add ANTHROPIC_API_KEY=your_key_here
+# 2. Build implementation
+Click "Open in Scaffold AI" button
+- Automatically imports your plan
+- Generates starter code
+- Creates infrastructure as code
+- Sets up CI/CD
 
-# 3. Start everything
-./dev.sh
+# 3. Deploy to AWS
+From Scaffold AI:
+- One-click deployment
+- Monitoring configured
+- Security enabled
 ```
 
-That's it! Visit http://localhost:3000
+### Option 2: Planning Only
 
-### Manual Setup
+```bash
+# Just need architecture decisions?
+Visit: https://project-planner-ai.com
+- Get architecture recommendations
+- Cost analysis
+- Security checklist
+- Export as PDF/Markdown
+```
+
+### Option 3: Local Development
+
+```bash
+# Run locally
+git clone https://github.com/jfowler-cloud/project-planner-ai
+cd project-planner-ai
+./setup.sh
+./dev.sh
+
+# Visit http://localhost:3000
+```
+
+---
 
 ```bash
 cd apps/backend
@@ -448,6 +505,70 @@ docker-compose up
 
 ---
 
+## Integration with Scaffold AI
+
+### 🔗 Seamless Handoff
+
+Project Planner AI integrates directly with **Scaffold AI** for complete project delivery.
+
+**How to use:**
+1. Complete your project plan in Project Planner AI
+2. Click the **purple floating button** (bottom-right corner)
+3. Click "Open in Scaffold AI"
+4. Your plan automatically transfers to Scaffold AI
+
+**What gets transferred:**
+- Project name and description
+- Recommended architecture
+- Technology stack
+- Technical requirements
+
+**What Scaffold AI does:**
+- ✅ Generates production-ready code
+- ✅ Creates infrastructure as code (Terraform/CDK)
+- ✅ Sets up CI/CD pipelines
+- ✅ Implements security scanning
+- ✅ Deploys to AWS
+
+### Example Workflow
+
+```
+Project Planner AI (Strategic)
+├─ Answer simple questions
+├─ AI generates 5 architecture options
+├─ Review costs, security, risks
+└─ Select best option
+    ↓
+    Click "Open in Scaffold AI"
+    ↓
+Scaffold AI (Tactical)
+├─ Generate starter code
+├─ Create IaC (Terraform/CDK)
+├─ Setup CI/CD pipelines
+├─ Run security scans
+└─ Deploy to AWS
+    ↓
+    Production Ready! 🚀
+```
+
+### Why Use Both?
+
+**Project Planner AI** = Strategic decisions
+- Deep AI analysis of requirements
+- Multiple architecture options
+- Cost/security/scalability reviews
+- Best for: Planning phase
+
+**Scaffold AI** = Tactical execution
+- Code generation
+- Infrastructure automation
+- Deployment
+- Best for: Implementation phase
+
+**Together** = Complete solution from idea to production
+
+---
+
 ## Contributing
 
 This project is currently in planning phase. Contributions will be welcome once the MVP is complete.
@@ -467,8 +588,8 @@ MIT License - see LICENSE file for details.
 - LinkedIn: [James Fowler](https://www.linkedin.com/in/james-fowler-aws-cloud-architect-dev-ops-professional/)
 
 **Related Projects:**
+- [**Scaffold AI**](https://github.com/jfowler-cloud/scaffold-ai) - AWS architecture designer and code generator (pairs with Planner)
 - [Resume Tailor AI](https://github.com/jfowler-cloud/resume-tailor-ai) - AI-powered resume optimization
-- [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) - AWS architecture designer
 - [Career Path Architect](https://github.com/jfowler-cloud/career-path-architect) - Career planning tool
 
 ---
@@ -484,9 +605,9 @@ The SOP enables rapid development of production-quality applications with securi
 
 ---
 
-**Status:** 🟡 Planning Phase  
-**Next Milestone:** Begin implementation (Week 1, Day 1)  
-**Estimated Launch:** 2 weeks from start date
+**Status:** 🟢 Phase 1 MVP Complete - Integrated with Scaffold AI  
+**Next Milestone:** Phase 2 - User authentication and persistence  
+**Integration:** Seamless handoff to Scaffold AI for code generation
 
 ---
 
