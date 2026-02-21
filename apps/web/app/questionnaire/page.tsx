@@ -87,6 +87,50 @@ export default function QuestionnairePage() {
     cloud_provider: "No preference"
   });
 
+  const fillDemoData = () => {
+    setBasics({
+      name: "Flow Log Analyzer",
+      description: "A serverless application that analyzes VPC flow logs, detects anomalies, and provides visual dashboards for network traffic patterns and security insights.",
+      target_users: "DevOps engineers, security analysts, and network administrators",
+      timeline: "1 week",
+      budget: "$100-$500"
+    });
+    
+    setTechnical({
+      user_count: "1K-10K",
+      growth_rate: "Moderate",
+      uptime: "99.9%",
+      multi_region: false,
+      regions: [],
+      data_size: "10-100GB",
+      data_sensitivity: "Confidential",
+      backup_frequency: "Daily",
+      response_time: "<500ms",
+      heavy_computation: true,
+      realtime_features: true,
+      authentication: true,
+      auth_type: "OAuth",
+      compliance: ["None"],
+      rate_limiting: true,
+      external_apis: false,
+      api_list: null,
+      payment_processing: false,
+      email_sms: true
+    });
+    
+    setPreferences({
+      backend_language: "Python",
+      backend_framework: "FastAPI",
+      frontend_framework: "React",
+      mobile_app: false,
+      database_type: "NoSQL",
+      infrastructure: "Serverless",
+      cloud_provider: "AWS"
+    });
+    
+    setStep(3); // Jump to final step
+  };
+
   const handleSubmit = async () => {
     const payload = { basics, technical, preferences };
     
@@ -101,7 +145,15 @@ export default function QuestionnairePage() {
     <div className="min-h-screen bg-gray-50">
       <nav className="border-b bg-white">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-blue-600">Project Planner AI</h1>
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-bold text-blue-600">Project Planner AI</h1>
+            <button
+              onClick={fillDemoData}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm"
+            >
+              🚀 Demo
+            </button>
+          </div>
         </div>
       </nav>
 
