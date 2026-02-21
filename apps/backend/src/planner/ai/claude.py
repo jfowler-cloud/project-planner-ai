@@ -77,8 +77,6 @@ class ClaudeClient:
                 messages=[{"role": "user", "content": prompt}]
             )
             return response.content[0].text
-            )
-            return response.content[0].text
     
     async def generate_architecture_options(
         self, 
