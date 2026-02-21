@@ -97,7 +97,7 @@ async def create_plan_stream(request: ProjectRequest):
         # Check rate limit
         rate_count = await cache_client.get_rate_limit(user_id)
         if rate_count >= settings.rate_limit_per_hour:
-            yield f"data: {json.dumps({'error': 'Rate limit exceeded'})}\n\n"
+            yield f"data: {json.dumps({'error': 'Rate limit exceeded', 'status': 'error'})}\n\n"
             return
         
         # Check cache
@@ -105,7 +105,7 @@ async def create_plan_stream(request: ProjectRequest):
         cached_plan = await cache_client.get_cached_plan(request_dict)
         
         if cached_plan:
-            yield f"data: {json.dumps({'status': 'cached', 'plan': cached_plan})}\n\n"
+            yield f"data: {json.dumps({'status': 'cached', 'progress': 100, 'plan': cached_plan})}\n\n"
             return
         
         await cache_client.increment_rate_limit(user_id)

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class ProjectBasics(BaseModel):

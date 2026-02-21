@@ -8,7 +8,7 @@ from planner.models.project import (
     TechnologyPreferences,
     CostBreakdown
 )
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def sample_plan():
     """Sample project plan"""
     return ProjectPlan(
         project_id="test-123",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         basics=ProjectBasics(
             name="Test Project",
             description="A test project",

@@ -3,7 +3,7 @@ import json
 from typing import AsyncIterator
 from ..config import settings
 from ..models.project import ProjectRequest, ArchitectureOption, ProjectPlan, CostBreakdown
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -230,7 +230,7 @@ Format as JSON with keys: recommended_option, justification, technology_stack, c
             
             return ProjectPlan(
                 project_id=str(uuid.uuid4()),
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 basics=request.basics,
                 technical=request.technical,
                 preferences=request.preferences,
@@ -271,7 +271,7 @@ Format as JSON with keys: recommended_option, justification, technology_stack, c
         """Default plan as fallback"""
         return ProjectPlan(
             project_id=str(uuid.uuid4()),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             basics=request.basics,
             technical=request.technical,
             preferences=request.preferences,
