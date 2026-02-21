@@ -19,6 +19,14 @@ A web application that guides users through the AI-assisted development SOP, hel
 5. Generate a new GitHub repository with the plan and SOP
 6. Provide cost estimates and timeline projections
 
+**Privacy & Security:**
+- User inputs are NOT stored permanently
+- Session data cleared after repository generation
+- GitHub tokens use OAuth with minimal scopes (repo creation only)
+- No tracking or analytics without consent
+- GDPR compliant (data minimization, right to deletion)
+- All AI requests anonymized (no PII sent to Claude API)
+
 ---
 
 ## User Flow
@@ -85,7 +93,16 @@ A web application that guides users through the AI-assisted development SOP, hel
 ### Step 4: AI Planning Process
 **Automated with Progress Indicators:**
 
-1. **Generating Architecture Options** (Opus 4.6)
+**Cost Optimization Features:**
+- Intelligent caching (60-min TTL for similar queries)
+- Template matching (reuse plans for common patterns)
+- Progressive enhancement (start with Sonnet, escalate to Opus only if needed)
+- Rate limiting (max 10 plans per user per hour)
+- Cost alerts (notify if plan exceeds $5 in AI costs)
+
+1. **Generating Architecture Options** (Opus 4.6 or Sonnet 4.5)
+   - Check cache for similar projects first
+   - Use Sonnet for standard patterns, Opus for complex/novel requirements
    - Progress bar
    - Show 3-5 options as they're generated
    - Each option shows: pros, cons, cost estimate, complexity
@@ -109,6 +126,24 @@ A web application that guides users through the AI-assisted development SOP, hel
 - Adjust specific technologies
 - Add custom requirements
 - Request additional AI review
+- **Save progress** (local storage, resume later)
+- **Export plan** (PDF, Markdown, JSON)
+- **Share plan** (read-only link)
+
+**Accessibility Features:**
+- WCAG 2.1 AA compliant
+- Keyboard navigation
+- Screen reader support
+- High contrast mode
+- Adjustable font sizes
+- Mobile-first responsive design
+
+**Error Handling:**
+- Graceful degradation if AI unavailable
+- Retry logic with exponential backoff
+- Clear error messages with recovery steps
+- Offline mode (view cached plans)
+- Auto-save every 30 seconds
 
 ### Step 6: Generate Project
 **Automated:**
@@ -122,6 +157,8 @@ A web application that guides users through the AI-assisted development SOP, hel
 8. Add security scanning config
 9. Add pre-commit hooks config
 10. Generate cost calculator spreadsheet
+11. **Add CONTRIBUTING.md and CODE_OF_CONDUCT.md**
+12. **Add issue templates and PR templates**
 
 ---
 
@@ -517,29 +554,89 @@ A web application that guides users through the AI-assisted development SOP, hel
 
 ---
 
+## Testing Strategy
+
+### Unit Tests (Target: 95%+ Coverage)
+**Backend:**
+- AI integration mocking
+- GitHub API mocking
+- Cost calculation logic
+- Template generation
+- Input validation
+
+**Frontend:**
+- Component rendering
+- Form validation
+- State management
+- API client
+- Error handling
+
+### Integration Tests
+- End-to-end questionnaire flow
+- AI planning pipeline
+- GitHub repository creation
+- Cost calculator accuracy
+- Cache hit/miss scenarios
+
+### E2E Tests (Critical Paths)
+1. **Happy Path:** Complete questionnaire → Generate plan → Create repo
+2. **Error Recovery:** AI timeout → Retry → Success
+3. **Cost Optimization:** Similar project → Cache hit → Fast response
+4. **Customization:** Change architecture → Re-plan → Update repo
+
+### Load Testing
+- 100 concurrent users
+- AI API rate limiting
+- Database connection pooling
+- Response time <2s (p95)
+
+### AI Response Validation
+- Schema validation (Pydantic)
+- Cost estimate sanity checks
+- Architecture option completeness
+- Security checklist verification
+- Fallback to templates if AI fails
+
+### Deployment Strategy
+- Blue-green deployment
+- Canary releases (10% → 50% → 100%)
+- Automated rollback on error rate >1%
+- Health checks every 30s
+- Zero-downtime deployments
+
+---
+
 ## Risk Assessment
 
 ### High Risk
 - **AI API costs exceed budget**
-  - Mitigation: Implement aggressive caching, rate limiting
+  - Mitigation: Aggressive caching (60-min TTL), rate limiting (10/hour), cost alerts
+  - Monitoring: Track cost per plan, alert if >$5
 - **GitHub API rate limits**
-  - Mitigation: Use GitHub App with higher limits
+  - Mitigation: GitHub App with 5000 req/hour, queue system, retry logic
+  - Monitoring: Track rate limit headers, alert at 80%
 - **Complex architecture generation**
-  - Mitigation: Start with templates, iterate
+  - Mitigation: Template library, progressive enhancement, fallback to Sonnet
+  - Monitoring: Track Opus vs Sonnet usage, success rates
 
 ### Medium Risk
 - **User confusion with technical terms**
-  - Mitigation: Simple language, tooltips, examples
+  - Mitigation: Tooltips, examples, plain language, progressive disclosure
+  - Monitoring: Track completion rates, time per step
 - **Long AI response times**
-  - Mitigation: Streaming responses, progress indicators
+  - Mitigation: Streaming responses, progress indicators, timeout after 60s
+  - Monitoring: Track p95 response times, alert if >30s
 - **Repository generation failures**
-  - Mitigation: Retry logic, error handling, manual fallback
+  - Mitigation: Retry 3x with exponential backoff, manual fallback, error logging
+  - Monitoring: Track success rate, alert if <95%
 
 ### Low Risk
 - **Browser compatibility**
-  - Mitigation: Modern browsers only, clear requirements
+  - Mitigation: Modern browsers only (Chrome 90+, Firefox 88+, Safari 14+)
+  - Monitoring: Track browser usage, error rates by browser
 - **Mobile responsiveness**
-  - Mitigation: Mobile-first design, testing
+  - Mitigation: Mobile-first design, responsive testing, touch-friendly UI
+  - Monitoring: Track mobile vs desktop usage, completion rates
 
 ---
 
@@ -576,34 +673,160 @@ A web application that guides users through the AI-assisted development SOP, hel
 ```
 project-planner-ai/
 ├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── security-scan.yml
+│   ├── workflows/
+│   │   ├── ci.yml
+│   │   ├── security-scan.yml
+│   │   └── deploy.yml
+│   ├── ISSUE_TEMPLATE/
+│   └── PULL_REQUEST_TEMPLATE.md
 ├── apps/
 │   ├── web/                    # Next.js frontend
 │   │   ├── app/
+│   │   │   ├── api/           # API routes (Next.js)
+│   │   │   ├── questionnaire/ # Multi-step form
+│   │   │   ├── planning/      # AI planning UI
+│   │   │   └── results/       # Generated plans
 │   │   ├── components/
+│   │   │   ├── ui/            # Reusable UI components
+│   │   │   ├── forms/         # Form components
+│   │   │   └── visualizations/ # Charts, diagrams
 │   │   ├── lib/
-│   │   └── public/
+│   │   │   ├── api.ts         # API client
+│   │   │   ├── cache.ts       # Client-side caching
+│   │   │   └── validation.ts  # Form validation
+│   │   ├── public/
+│   │   └── tests/             # Frontend tests
 │   └── backend/                # FastAPI backend
-│       ├── src/
-│       │   └── planner/
-│       │       ├── api/
-│       │       ├── ai/
-│       │       ├── github/
-│       │       └── models/
-│       └── tests/
+│       ├── src/planner/
+│       │   ├── api/
+│       │   │   ├── v1/        # API v1 routes
+│       │   │   └── middleware/ # Auth, rate limiting
+│       │   ├── ai/
+│       │   │   ├── claude.py  # Claude API client
+│       │   │   ├── cache.py   # Response caching
+│       │   │   └── templates.py # Project templates
+│       │   ├── github/
+│       │   │   ├── client.py  # GitHub API
+│       │   │   └── generator.py # Repo generation
+│       │   ├── models/
+│       │   │   ├── project.py # Project models
+│       │   │   └── plan.py    # Plan models
+│       │   ├── db/
+│       │   │   ├── schema.py  # Database schema
+│       │   │   └── cache.py   # Redis cache
+│       │   └── utils/
+│       │       ├── cost.py    # Cost calculator
+│       │       └── validation.py # Input validation
+│       └── tests/             # Backend tests (95%+ coverage)
 ├── docs/
 │   ├── architecture/
+│   │   ├── system-design.md
+│   │   ├── database-schema.md
+│   │   └── api-design.md
 │   ├── api/
+│   │   └── openapi.yaml
 │   └── user-guide/
+│       ├── getting-started.md
+│       └── faq.md
+├── infrastructure/            # IaC (optional)
+│   ├── terraform/
+│   └── cloudformation/
 ├── AI_DEVELOPMENT_SOP.md
-├── PROJECT_PLAN.md             # This file
+├── PROJECT_PLAN.md
 ├── README.md
+├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── SECURITY.md
 ├── .gitignore
 ├── .pre-commit-config.yaml
 └── LICENSE
 ```
+
+---
+
+## Scalability & Performance
+
+### Database Schema (DynamoDB)
+```
+Projects Table:
+- PK: user_id
+- SK: project_id
+- Attributes: name, created_at, status, plan_data
+- GSI: status-index (for analytics)
+
+Cache Table:
+- PK: cache_key (hash of inputs)
+- SK: timestamp
+- TTL: 3600 (1 hour)
+- Attributes: response_data, model_used, cost
+
+Analytics Table:
+- PK: date
+- SK: metric_name
+- Attributes: value, metadata
+```
+
+### Caching Strategy
+**Layer 1: Browser (LocalStorage)**
+- Form progress (auto-save)
+- Recent plans (offline access)
+- User preferences
+
+**Layer 2: CDN (CloudFront)**
+- Static assets (images, CSS, JS)
+- Public documentation
+- Cache-Control: max-age=31536000
+
+**Layer 3: Application (Redis)**
+- AI responses (60-min TTL)
+- GitHub API responses (5-min TTL)
+- Rate limit counters
+- Session data
+
+**Layer 4: Database (DynamoDB)**
+- Project templates
+- User projects
+- Analytics data
+
+### API Versioning
+- `/api/v1/` - Current stable API
+- `/api/v2/` - Future breaking changes
+- Deprecation warnings 6 months before removal
+- Backward compatibility for 12 months
+
+### Monitoring & Observability
+**Metrics (CloudWatch):**
+- Request count, latency (p50, p95, p99)
+- Error rate by endpoint
+- AI API cost per request
+- Cache hit rate
+- GitHub API rate limit usage
+
+**Logging (Structured JSON):**
+- Request/response logs
+- AI API calls (anonymized)
+- Error logs with stack traces
+- Audit logs (repo creation, user actions)
+
+**Tracing (X-Ray):**
+- End-to-end request tracing
+- AI API latency breakdown
+- Database query performance
+- External API calls
+
+**Alerting:**
+- Error rate >1% for 5 minutes
+- p95 latency >2s for 5 minutes
+- AI cost >$10/hour
+- GitHub rate limit >80%
+- Cache hit rate <50%
+
+### Performance Targets
+- **Page Load:** <2s (p95)
+- **API Response:** <200ms (p95) for cached, <2s for AI
+- **Repository Generation:** <30s (p95)
+- **Concurrent Users:** 100+ without degradation
+- **Uptime:** 99.9% (43 minutes downtime/month)
 
 ---
 
