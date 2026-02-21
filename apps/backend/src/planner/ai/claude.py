@@ -32,12 +32,12 @@ class ClaudeClient:
             },
             "optimized": {
                 "planning": "claude-sonnet-4-20250514",
-                "review": "claude-3-haiku-20240307",
+                "review": "claude-haiku-4-20250514",
                 "recommendation": "claude-sonnet-4-20250514"
             },
             "premium": {
                 "planning": "claude-opus-4-20250514",
-                "review": "claude-sonnet-4-20250514",
+                "review": "claude-opus-4-20250514",
                 "recommendation": "claude-opus-4-20250514"
             }
         }
