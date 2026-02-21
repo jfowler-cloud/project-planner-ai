@@ -134,7 +134,7 @@ Most developers either:
 ## Technology Stack
 
 ### Frontend
-- **Framework:** Next.js 15 + React 19
+- **Framework:** Next.js 16 + React 19
 - **Styling:** Tailwind CSS + Cloudscape Design System
 - **State:** Zustand
 - **Forms:** React Hook Form + Zod
