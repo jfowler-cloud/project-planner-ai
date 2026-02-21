@@ -211,6 +211,38 @@ Each option analyzed for:
 
 ---
 
+## Deployment
+
+### Environments
+
+This project supports three deployment tiers:
+
+- **Testing**: `testing.project-planner-ai.com` - Branch: `testing`
+- **Optimized**: `optimized.project-planner-ai.com` - Branch: `develop`  
+- **Premium**: `project-planner-ai.com` - Branch: `main`
+
+### Deploy Manually
+
+```bash
+# Deploy to testing
+./deploy.sh testing
+
+# Deploy to optimized
+./deploy.sh optimized
+
+# Deploy to premium
+./deploy.sh premium
+```
+
+### Automatic Deployment
+
+Push to the respective branch for automatic deployment via GitHub Actions:
+- Push to `testing` → deploys to testing environment
+- Push to `develop` → deploys to optimized environment
+- Push to `main` → deploys to premium environment
+
+---
+
 ## Project Structure
 
 ```
@@ -294,22 +326,86 @@ project-planner-ai/
 
 ---
 
-## Getting Started (Coming Soon)
+## Getting Started
+
+### Prerequisites
+- Python 3.12+
+- Node.js 20+
+- Docker (for Redis)
+- Anthropic API key
+
+### Quick Start
 
 ```bash
-# Clone repository
-git clone https://github.com/jfowler-cloud/project-planner-ai.git
-cd project-planner-ai
+# 1. Setup (first time only)
+./setup.sh
+
+# 2. Add your API key
+# Edit apps/backend/.env and add ANTHROPIC_API_KEY=your_key_here
+
+# 3. Start everything
+./dev.sh
+```
+
+That's it! Visit http://localhost:3000
+
+### Manual Setup
+
+```bash
+cd apps/backend
+
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+uv sync
+uv pip install -e ".[dev]"
+
+# Setup environment
+cp ../../.env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+
+# Run tests
+uv run pytest
+
+# Start server
+uv run python src/main.py
+```
+
+Backend runs on http://localhost:8000
+
+### Frontend Setup
+
+```bash
+cd apps/web
 
 # Install dependencies
 npm install
 
-# Setup environment
-cp .env.example .env
-# Add your Anthropic API key
-
-# Run development server
+# Start development server
 npm run dev
+```
+
+Frontend runs on http://localhost:3000
+
+### Quick Start (Recommended)
+
+```bash
+# Start all services (Redis + Backend + Frontend)
+./dev.sh
+```
+
+This will start:
+- Redis on port 6379
+- Backend on http://localhost:8000
+- Frontend on http://localhost:3000
+
+Press Ctrl+C to stop all services.
+
+### Docker Setup (Alternative)
+
+```bash
+docker-compose up
 ```
 
 ---
@@ -318,13 +414,20 @@ npm run dev
 
 ### Phase 1: MVP (Weeks 1-2)
 - [x] Project planning and architecture
+- [x] Backend API structure (FastAPI)
+- [x] AI integration (Claude Opus/Sonnet/Haiku)
+- [x] Data models and validation
+- [x] Caching layer (Redis)
+- [x] Rate limiting
+- [x] Basic tests (models, AI, cache, API)
+- [x] CI/CD pipeline (GitHub Actions)
+- [x] Landing page UI
 - [ ] Interactive questionnaire UI
-- [ ] AI integration (Claude Opus/Sonnet/Haiku)
-- [ ] Architecture option generation
-- [ ] Critical review loop (10 iterations)
+- [ ] Architecture option generation UI
+- [ ] Critical review loop UI
 - [ ] GitHub repository generation
-- [ ] Cost calculator
-- [ ] Basic documentation
+- [ ] Cost calculator UI
+- [ ] Comprehensive documentation
 
 ### Phase 2: Enhanced Features (Weeks 3-4)
 - [ ] User authentication

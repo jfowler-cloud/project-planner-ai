@@ -1,0 +1,58 @@
+import httpx
+from typing import Optional
+from ..config import settings
+
+
+class GitHubClient:
+    """Client for GitHub API"""
+    
+    def __init__(self, token: Optional[str] = None):
+        self.token = token or settings.github_token
+        self.base_url = "https://api.github.com"
+        self.headers = {
+            "Authorization": f"token {self.token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+    
+    async def create_repository(
+        self,
+        name: str,
+        description: str,
+        private: bool = True
+    ) -> dict:
+        """Create a new GitHub repository"""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/user/repos",
+                headers=self.headers,
+                json={
+                    "name": name,
+                    "description": description,
+                    "private": private,
+                    "auto_init": True
+                }
+            )
+            response.raise_for_status()
+            return response.json()
+    
+    async def create_file(
+        self,
+        repo_full_name: str,
+        path: str,
+        content: str,
+        message: str
+    ) -> dict:
+        """Create a file in repository"""
+        import base64
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"{self.base_url}/repos/{repo_full_name}/contents/{path}",
+                headers=self.headers,
+                json={
+                    "message": message,
+                    "content": base64.b64encode(content.encode()).decode()
+                }
+            )
+            response.raise_for_status()
+            return response.json()

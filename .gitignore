@@ -1,32 +1,30 @@
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-.pnpm-store/
-dist/
-build/
-*.tsbuildinfo
-.next/
-out/
-package-lock.json
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-.venv/
+env/
 venv/
 ENV/
-env/
+.venv
+*.egg-info/
+dist/
+build/
 .pytest_cache/
 .coverage
 htmlcov/
-*.egg-info/
-uv.lock
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+out/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Environment
 .env
@@ -39,26 +37,19 @@ uv.lock
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
-
-# AWS
-.aws-sam/
-
-# Logs
-logs/
-*.log
+Thumbs.db
 
 # Testing
 coverage/
 .nyc_output/
 
-# Temporary
-tmp/
-temp/
-*.tmp
+# Build
+dist/
+build/
 
-# OS
-Thumbs.db
-
-# Turbo
-.turbo/
+# Misc
+*.log
+.cache/
