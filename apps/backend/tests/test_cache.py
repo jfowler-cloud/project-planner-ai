@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from planner.ai.cache import CacheClient
 
 
@@ -7,9 +7,8 @@ from planner.ai.cache import CacheClient
 async def cache_client():
     """Cache client fixture"""
     client = CacheClient()
-    await client.connect()
+    client.redis = MagicMock()
     yield client
-    await client.disconnect()
 
 
 @pytest.mark.asyncio
