@@ -262,13 +262,22 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-xl font-bold mb-4">Next Steps</h3>
           <div className="flex gap-4">
-            <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button 
+              onClick={() => alert('GitHub repository generation is not implemented yet. This feature will create a complete repository with documentation, infrastructure code, and CI/CD setup.')}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
               Generate GitHub Repository
             </button>
-            <button className="px-6 py-3 border rounded-lg hover:bg-gray-50">
+            <button 
+              onClick={() => alert('PDF export is not implemented yet.')}
+              className="px-6 py-3 border rounded-lg hover:bg-gray-50"
+            >
               Export as PDF
             </button>
-            <button className="px-6 py-3 border rounded-lg hover:bg-gray-50">
+            <button 
+              onClick={() => alert('Markdown export is not implemented yet.')}
+              className="px-6 py-3 border rounded-lg hover:bg-gray-50"
+            >
               Export as Markdown
             </button>
           </div>

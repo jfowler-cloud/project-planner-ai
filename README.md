@@ -481,8 +481,10 @@ docker-compose up
 - [x] Interactive questionnaire UI (3-step form)
 - [x] Planning progress UI (real-time SSE)
 - [x] Results page (4 tabs: overview, architecture, costs, security)
-- [x] GitHub repository generator
 - [x] Deployment configurations (testing/optimized/premium)
+- [ ] GitHub repository generator (backend ready, frontend not connected)
+- [ ] Export as PDF
+- [ ] Export as Markdown
 - [ ] Cost calculator UI (basic version in results page)
 - [ ] DynamoDB persistence
 
