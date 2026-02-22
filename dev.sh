@@ -8,14 +8,14 @@ else
 fi
 
 # Start backend with testing tier (cheapest models)
-cd apps/backend/src
-AI_PROVIDER=bedrock DEPLOYMENT_TIER=testing AWS_REGION=us-east-1 PYTHONPATH=. uv run python main.py &
+cd apps/backend
+AI_PROVIDER=bedrock DEPLOYMENT_TIER=testing AWS_REGION=us-east-1 uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
-cd ../../..
+cd ../..
 
 # Start frontend
 cd apps/web
-npm run dev &
+NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev &
 FRONTEND_PID=$!
 cd ../..
 
