@@ -6,6 +6,8 @@ from ..config import settings
 from ..models.project import ProjectRequest, ArchitectureOption, ProjectPlan, CostBreakdown
 from datetime import datetime, timezone
 import uuid
+import asyncio
+from functools import partial
 
 
 class ClaudeClient:
@@ -43,7 +45,7 @@ class ClaudeClient:
         }
         self.models = self.model_config[settings.deployment_tier]
     
-    def _call_claude(self, prompt: str, model: str, max_tokens: int = None) -> str:
+    async def _call_claude(self, prompt: str, model: str, max_tokens: int = None) -> str:
         """Call Claude via Anthropic or Bedrock"""
         max_tokens = max_tokens or settings.max_tokens
         
@@ -57,24 +59,36 @@ class ClaudeClient:
             }
             bedrock_model = model_map.get(model, model)
             
-            response = self.client.invoke_model(
-                modelId=bedrock_model,
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": max_tokens,
-                    "temperature": settings.temperature,
-                    "messages": [{"role": "user", "content": prompt}]
-                })
+            # Run blocking call in thread pool
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                partial(
+                    self.client.invoke_model,
+                    modelId=bedrock_model,
+                    body=json.dumps({
+                        "anthropic_version": "bedrock-2023-05-31",
+                        "max_tokens": max_tokens,
+                        "temperature": settings.temperature,
+                        "messages": [{"role": "user", "content": prompt}]
+                    })
+                )
             )
             
             result = json.loads(response["body"].read())
             return result["content"][0]["text"]
         else:
-            response = self.client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                temperature=settings.temperature,
-                messages=[{"role": "user", "content": prompt}]
+            # Run blocking call in thread pool
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                partial(
+                    self.client.messages.create,
+                    model=model,
+                    max_tokens=max_tokens,
+                    temperature=settings.temperature,
+                    messages=[{"role": "user", "content": prompt}]
+                )
             )
             return response.content[0].text
     
@@ -87,7 +101,7 @@ class ClaudeClient:
         
         model = model or self.models["planning"]
         prompt = self._build_architecture_prompt(request)
-        content = self._call_claude(prompt, model)
+        content = await self._call_claude(prompt, model)
         options = self._parse_architecture_options(content)
         return options
     
@@ -115,7 +129,7 @@ class ClaudeClient:
         review_type = review_types[iteration - 1] if iteration <= 10 else "General Review"
         
         prompt = self._build_review_prompt(request, options, review_type)
-        content = self._call_claude(prompt, self.models["review"], 2048)
+        content = await self._call_claude(prompt, self.models["review"], 2048)
         
         return {
             "iteration": iteration,
@@ -132,7 +146,7 @@ class ClaudeClient:
         """Generate final recommendation after all reviews"""
         
         prompt = self._build_recommendation_prompt(request, options, reviews)
-        content = self._call_claude(prompt, self.models["recommendation"])
+        content = await self._call_claude(prompt, self.models["recommendation"])
         plan = self._parse_final_plan(request, options, content)
         return plan
     

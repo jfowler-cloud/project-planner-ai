@@ -46,6 +46,7 @@ interface TechnologyPreferences {
 export default function QuestionnairePage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [reviewCount, setReviewCount] = useState(3);
   
   const [basics, setBasics] = useState<ProjectBasics>({
     name: "",
@@ -132,7 +133,7 @@ export default function QuestionnairePage() {
   };
 
   const handleSubmit = async () => {
-    const payload = { basics, technical, preferences };
+    const payload = { basics, technical, preferences, review_count: reviewCount };
     
     // Store in session storage for planning page
     sessionStorage.setItem("projectRequest", JSON.stringify(payload));
@@ -452,6 +453,27 @@ export default function QuestionnairePage() {
                     <option>Azure</option>
                     <option>GCP</option>
                   </select>
+                </div>
+
+                {/* Review Count Control */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Critical Review Passes
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={reviewCount}
+                      onChange={(e) => setReviewCount(Number(e.target.value))}
+                      className="flex-1"
+                    />
+                    <span className="text-lg font-semibold w-8 text-center">{reviewCount}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    More reviews = better quality but slower (default: 3)
+                  </p>
                 </div>
               </div>
             </div>

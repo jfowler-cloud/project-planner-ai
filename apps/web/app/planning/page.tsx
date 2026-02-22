@@ -18,6 +18,7 @@ export default function PlanningPage() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("Initializing...");
   const [options, setOptions] = useState<any[]>([]);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,7 +100,7 @@ export default function PlanningPage() {
                     break;
                   
                   case "reviewing":
-                    setStatus(`Performing critical review ${data.iteration}/10...`);
+                    setStatus(`Performing critical review ${data.iteration}/${data.total || 10}...`);
                     break;
                   
                   case "finalizing":
@@ -190,15 +191,36 @@ export default function PlanningPage() {
               {/* Architecture Options Preview */}
               {options.length > 0 && (
                 <div className="border-t pt-6">
-                  <h3 className="font-semibold mb-3">Architecture Options Generated:</h3>
+                  <h3 className="font-semibold mb-3">Select Your Preferred Architecture:</h3>
                   <div className="space-y-2">
                     {options.map((option, idx) => (
-                      <div key={idx} className="p-3 bg-gray-50 rounded">
-                        <div className="font-medium">{option.name}</div>
-                        <div className="text-sm text-gray-600">{option.description}</div>
+                      <div 
+                        key={idx} 
+                        onClick={() => setSelectedOption(idx)}
+                        className={`p-3 rounded cursor-pointer border-2 transition-all ${
+                          selectedOption === idx 
+                            ? 'bg-blue-50 border-blue-500' 
+                            : 'bg-gray-50 border-transparent hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="radio" 
+                            checked={selectedOption === idx}
+                            onChange={() => setSelectedOption(idx)}
+                            className="w-4 h-4"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium">{option.name}</div>
+                            <div className="text-sm text-gray-600">{option.description}</div>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {selectedOption !== null ? '✓ Selection saved - reviews will focus on this option' : 'Click to select (optional - AI will recommend if not selected)'}
+                  </p>
                 </div>
               )}
 

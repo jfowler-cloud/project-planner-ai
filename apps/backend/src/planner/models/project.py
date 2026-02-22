@@ -51,6 +51,7 @@ class ProjectRequest(BaseModel):
     basics: ProjectBasics
     technical: TechnicalRequirements
     preferences: TechnologyPreferences = Field(default_factory=TechnologyPreferences)
+    review_count: int = Field(default=3, ge=1, le=10)
     user_id: Optional[str] = None
     session_id: Optional[str] = None
 

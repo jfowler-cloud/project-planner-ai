@@ -14,7 +14,9 @@
 
 **Working Features:**
 - ✅ Interactive 3-step questionnaire with demo mode
-- ✅ Real-time AI planning with progress tracking
+- ✅ Real-time AI planning with streaming progress updates
+- ✅ Configurable review passes (1-10, default: 3)
+- ✅ Selectable architecture options during planning
 - ✅ AWS Bedrock integration (Claude Haiku 3.0/Sonnet 4.5/Opus 4.5)
 - ✅ 3 deployment tiers (testing/optimized/premium)
 - ✅ Results page with 4 tabs (overview, architecture, costs, security)
@@ -24,7 +26,6 @@
 - ✅ 48 tests, 86% coverage
 
 **Known Issues:**
-- ⚠️ Progress updates jump from 0% to 100% (streaming issue - under investigation)
 - ⚠️ Frontend needs restart to pick up backend changes
 
 **Not Yet Implemented:**
