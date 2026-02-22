@@ -3,10 +3,35 @@
 > AI-assisted project planning tool with interactive UI - Turn ideas into production-ready project plans in minutes
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/Status-Planning-yellow)](https://github.com)
+[![Status](https://img.shields.io/badge/Status-Active%20Development-green)](https://github.com)
 
-![Planning Phase](https://img.shields.io/badge/Phase-Planning-blue?style=flat-square)
-![Timeline](https://img.shields.io/badge/Timeline-2%20Weeks-green?style=flat-square)
+![Planning Phase](https://img.shields.io/badge/Phase-MVP-blue?style=flat-square)
+![Timeline](https://img.shields.io/badge/Progress-85%25-green?style=flat-square)
+
+---
+
+## 🚀 Current Status
+
+**Working Features:**
+- ✅ Interactive 3-step questionnaire with demo mode
+- ✅ Real-time AI planning with progress tracking
+- ✅ AWS Bedrock integration (Claude Haiku 3.0/Sonnet 4.5/Opus 4.5)
+- ✅ 3 deployment tiers (testing/optimized/premium)
+- ✅ Results page with 4 tabs (overview, architecture, costs, security)
+- ✅ Scaffold AI integration (purple sidebar button)
+- ✅ Redis caching with graceful fallback
+- ✅ Rate limiting (10 plans/hour)
+- ✅ 48 tests, 86% coverage
+
+**Known Issues:**
+- ⚠️ Progress updates jump from 0% to 100% (streaming issue - under investigation)
+- ⚠️ Frontend needs restart to pick up backend changes
+
+**Not Yet Implemented:**
+- ❌ GitHub repository generation (backend ready, frontend not connected)
+- ❌ PDF/Markdown export
+- ❌ DynamoDB persistence
+- ❌ User authentication
 
 ---
 
