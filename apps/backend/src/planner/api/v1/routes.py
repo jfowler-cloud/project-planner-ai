@@ -190,7 +190,10 @@ async def get_templates():
 
 
 @app.post("/api/v1/generate-repo")
-async def generate_repo(project_id: str, github_token: str):
+async def generate_repo(plan: ProjectPlan, github_token: str):
     """Generate GitHub repository from plan"""
-    # TODO: Retrieve plan from database
-    raise HTTPException(status_code=501, detail="Not implemented yet")
+    try:
+        repo_url = await generate_repository(plan, github_token)
+        return {"repo_url": repo_url, "status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate repository: {str(e)}")

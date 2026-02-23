@@ -32,6 +32,10 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [plan, setPlan] = useState<ProjectPlan | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [projectId, setProjectId] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [githubToken, setGithubToken] = useState("");
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
 
   useEffect(() => {
     params.then((p) => setProjectId(p.id));
@@ -39,11 +43,61 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     const storedPlan = sessionStorage.getItem("projectPlan");
     
     if (storedPlan) {
-      setPlan(JSON.parse(storedPlan));
+      const parsedPlan = JSON.parse(storedPlan);
+      setPlan(parsedPlan);
+      // Set the selected option from the plan, or default to the recommended one
+      if (parsedPlan.selectedOptionIndex !== null && parsedPlan.selectedOptionIndex !== undefined) {
+        setSelectedOptionIndex(parsedPlan.selectedOptionIndex);
+      } else {
+        // Find the index of the recommended option
+        const recommendedIndex = parsedPlan.architecture_options?.findIndex(
+          (opt: any) => opt.name === parsedPlan.recommended_option
+        );
+        setSelectedOptionIndex(recommendedIndex >= 0 ? recommendedIndex : 0);
+      }
     } else {
       router.push("/questionnaire");
     }
   }, [router, params]);
+  
+  // Update the plan in sessionStorage when selection changes
+  useEffect(() => {
+    if (plan && selectedOptionIndex !== null) {
+      const updatedPlan = { ...plan, selectedOptionIndex };
+      sessionStorage.setItem("projectPlan", JSON.stringify(updatedPlan));
+    }
+  }, [selectedOptionIndex, plan]);
+
+  const handleGenerateRepo = async () => {
+    if (!plan) return;
+    
+    if (!githubToken) {
+      setShowTokenModal(true);
+      return;
+    }
+    
+    setIsGenerating(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/generate-repo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, github_token: githubToken }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to generate repository");
+      }
+      
+      const data = await response.json();
+      alert(`Repository created successfully! ${data.repo_url}`);
+      window.open(data.repo_url, "_blank");
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (!plan) {
     return (
@@ -138,27 +192,51 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
             {/* Architecture Tab */}
             {activeTab === "architecture" && (
               <div className="space-y-6">
-                <h3 className="text-xl font-bold mb-3">Architecture Options</h3>
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold mb-2">Architecture Options</h3>
+                  <p className="text-sm text-gray-600">
+                    Click on an option to select it for Scaffold AI deployment
+                    {selectedOptionIndex !== null && ` • Currently selected: ${plan.architecture_options[selectedOptionIndex]?.name}`}
+                  </p>
+                </div>
                 {plan.architecture_options.map((option, idx) => (
                   <div
                     key={idx}
-                    className={`p-4 border rounded-lg ${
-                      option.name === plan.recommended_option
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-gray-200"
+                    onClick={() => setSelectedOptionIndex(idx)}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedOptionIndex === idx
+                        ? "border-blue-600 bg-blue-50 shadow-md"
+                        : option.name === plan.recommended_option
+                        ? "border-blue-300 bg-blue-25"
+                        : "border-gray-200 hover:border-gray-400"
                     }`}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className="text-lg font-semibold">{option.name}</h4>
-                      {option.name === plan.recommended_option && (
-                        <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded">
-                          Recommended
-                        </span>
-                      )}
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="radio" 
+                          checked={selectedOptionIndex === idx}
+                          onChange={() => setSelectedOptionIndex(idx)}
+                          className="w-5 h-5 text-blue-600"
+                        />
+                        <h4 className="text-lg font-semibold">{option.name}</h4>
+                      </div>
+                      <div className="flex gap-2">
+                        {selectedOptionIndex === idx && (
+                          <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded">
+                            Selected
+                          </span>
+                        )}
+                        {option.name === plan.recommended_option && (
+                          <span className="px-2 py-1 bg-green-600 text-white text-xs rounded">
+                            AI Recommended
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-gray-600 mb-3">{option.description}</p>
+                    <p className="text-gray-600 mb-3 ml-8">{option.description}</p>
                     
-                    <div className="grid grid-cols-2 gap-4 mb-3">
+                    <div className="grid grid-cols-2 gap-4 mb-3 ml-8">
                       <div>
                         <div className="text-sm font-medium text-gray-700 mb-1">Pros</div>
                         <ul className="text-sm space-y-1">
@@ -177,7 +255,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                       </div>
                     </div>
 
-                    <div className="flex gap-4 text-sm">
+                    <div className="flex gap-4 text-sm ml-8">
                       <span className="text-gray-600">
                         <strong>Cost:</strong> {option.cost_estimate}
                       </span>
@@ -263,10 +341,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
           <h3 className="text-xl font-bold mb-4">Next Steps</h3>
           <div className="flex gap-4">
             <button 
-              onClick={() => alert('GitHub repository generation is not implemented yet. This feature will create a complete repository with documentation, infrastructure code, and CI/CD setup.')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              onClick={handleGenerateRepo}
+              disabled={isGenerating}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Generate GitHub Repository
+              {isGenerating ? "Generating..." : "Generate GitHub Repository"}
             </button>
             <button 
               onClick={() => alert('PDF export is not implemented yet.')}
@@ -286,6 +365,57 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
       {/* Scaffold AI Integration */}
       <ScaffoldIntegration projectPlan={plan} />
+
+      {/* GitHub Token Modal */}
+      {showTokenModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold mb-4">GitHub Personal Access Token Required</h3>
+            <p className="text-gray-600 mb-4">
+              Enter a GitHub Personal Access Token with <strong>repo</strong> scope to create the repository.
+              The token is used once and never stored.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Personal Access Token</label>
+              <input
+                type="password"
+                value={githubToken}
+                onChange={(e) => setGithubToken(e.target.value)}
+                placeholder="ghp_xxxxxxxxxxxx"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                <a 
+                  href="https://github.com/settings/tokens/new?scopes=repo&description=Project%20Planner%20AI" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  Create a token here
+                </a>
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowTokenModal(false)}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowTokenModal(false);
+                  handleGenerateRepo();
+                }}
+                disabled={!githubToken}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

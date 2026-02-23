@@ -48,52 +48,65 @@ class ClaudeClient:
         }
         self.models = self.model_config[settings.deployment_tier]
     
-    async def _call_claude(self, prompt: str, model: str, max_tokens: int = None) -> str:
-        """Call Claude via Anthropic or Bedrock"""
+    async def _call_claude(self, prompt: str, model: str, max_tokens: int = None, retry_count: int = 0) -> str:
+        """Call Claude via Anthropic or Bedrock with retry logic"""
         max_tokens = max_tokens or settings.max_tokens
+        max_retries = 3
         
-        if self.use_bedrock:
-            # Map model names to Bedrock IDs
-            model_map = {
-                "claude-opus-4-20250514": "anthropic.claude-opus-4-20250514-v1:0",
-                "claude-sonnet-4-20250514": "anthropic.claude-sonnet-4-20250514-v1:0",
-                "claude-haiku-4-20250514": "anthropic.claude-haiku-4-20250514-v1:0",
-                "claude-3-haiku-20240307": "anthropic.claude-3-haiku-20240307-v1:0",
-            }
-            bedrock_model = model_map.get(model, model)
-            
-            # Run blocking call in thread pool
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                partial(
-                    self.client.invoke_model,
-                    modelId=bedrock_model,
-                    body=json.dumps({
-                        "anthropic_version": "bedrock-2023-05-31",
-                        "max_tokens": max_tokens,
-                        "temperature": settings.temperature,
-                        "messages": [{"role": "user", "content": prompt}]
-                    })
+        try:
+            if self.use_bedrock:
+                # Map model names to Bedrock IDs
+                model_map = {
+                    "claude-opus-4-20250514": "anthropic.claude-opus-4-20250514-v1:0",
+                    "claude-sonnet-4-20250514": "anthropic.claude-sonnet-4-20250514-v1:0",
+                    "claude-haiku-4-20250514": "anthropic.claude-haiku-4-20250514-v1:0",
+                    "claude-3-haiku-20240307": "anthropic.claude-3-haiku-20240307-v1:0",
+                }
+                bedrock_model = model_map.get(model, model)
+                
+                # Run blocking call in thread pool
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(
+                    None,
+                    partial(
+                        self.client.invoke_model,
+                        modelId=bedrock_model,
+                        body=json.dumps({
+                            "anthropic_version": "bedrock-2023-05-31",
+                            "max_tokens": max_tokens,
+                            "temperature": settings.temperature,
+                            "messages": [{"role": "user", "content": prompt}]
+                        })
+                    )
                 )
-            )
-            
-            result = json.loads(response["body"].read())
-            return result["content"][0]["text"]
-        else:
-            # Run blocking call in thread pool
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                partial(
-                    self.client.messages.create,
-                    model=model,
-                    max_tokens=max_tokens,
-                    temperature=settings.temperature,
-                    messages=[{"role": "user", "content": prompt}]
+                
+                result = json.loads(response["body"].read())
+                return result["content"][0]["text"]
+            else:
+                # Run blocking call in thread pool
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(
+                    None,
+                    partial(
+                        self.client.messages.create,
+                        model=model,
+                        max_tokens=max_tokens,
+                        temperature=settings.temperature,
+                        messages=[{"role": "user", "content": prompt}]
+                    )
                 )
-            )
-            return response.content[0].text
+                return response.content[0].text
+        except Exception as e:
+            error_str = str(e)
+            # Check if it's a retryable error
+            if retry_count < max_retries and ("ModelErrorException" in error_str or "unexpected error" in error_str.lower() or "throttl" in error_str.lower()):
+                wait_time = (retry_count + 1) * 2  # Exponential backoff: 2s, 4s, 6s
+                logger.warning(f"Bedrock API error (attempt {retry_count + 1}/{max_retries}), retrying in {wait_time}s: {error_str}")
+                await asyncio.sleep(wait_time)
+                return await self._call_claude(prompt, model, max_tokens, retry_count + 1)
+            else:
+                logger.error(f"Failed to call Claude after {retry_count + 1} attempts: {e}")
+                raise
     
     async def generate_architecture_options(
         self, 
@@ -182,14 +195,26 @@ Preferences:
 Generate 3-5 architecture options. For each option, provide:
 1. Name (e.g., "Full Serverless", "Containerized")
 2. Description (2-3 sentences)
-3. Technology stack (specific technologies)
-4. Pros (3-5 bullet points)
-5. Cons (3-5 bullet points)
-6. Cost estimate (monthly range)
-7. Complexity (Low/Medium/High)
+3. Technology stack as a DICTIONARY/OBJECT with keys like "backend", "frontend", "database", "hosting" (NOT a list)
+4. Pros (3-5 bullet points as array of strings)
+5. Cons (3-5 bullet points as array of strings)
+6. Cost estimate (monthly range, e.g., "$50-100/month")
+7. Complexity - MUST be exactly one of: "Low", "Medium", or "High" (no other values allowed)
 8. Best for (who should use this)
 
-Format as JSON array of objects with keys: name, description, stack, pros, cons, cost_estimate, complexity, best_for"""
+CRITICAL: Format as JSON array. Example structure:
+[
+  {{
+    "name": "Serverless Architecture",
+    "description": "Fully serverless using AWS Lambda and DynamoDB",
+    "stack": {{"backend": "AWS Lambda", "frontend": "React", "database": "DynamoDB"}},
+    "pros": ["Low cost", "Auto-scaling"],
+    "cons": ["Cold starts", "Vendor lock-in"],
+    "cost_estimate": "$50-100/month",
+    "complexity": "Medium",
+    "best_for": "Small to medium projects"
+  }}
+]"""
     
     def _build_review_prompt(
         self, 
@@ -251,13 +276,26 @@ Review Summary:
 Provide:
 1. Recommended option name
 2. Justification (why this option is best)
-3. Detailed technology stack
-4. Cost breakdown (compute, storage, database, networking, total)
+3. Detailed technology stack as DICTIONARY/OBJECT (e.g., {{"backend": "FastAPI", "frontend": "React"}})
+4. Cost breakdown with ALL fields: compute, storage, database, ai_api, networking, total_monthly, total_yearly
 5. Timeline estimate
-6. Top 5 risks
-7. Top 10 security checklist items
+6. Top 5 risks as ARRAY of strings (NOT a dictionary)
+7. Top 10 security checklist items as ARRAY of strings (NOT a dictionary)
 
-Format as JSON with keys: recommended_option, justification, technology_stack, cost_breakdown, timeline_estimate, risk_assessment, security_checklist"""
+Format as JSON with keys: recommended_option, justification, technology_stack, cost_breakdown, timeline_estimate, risk_assessment, security_checklist
+
+IMPORTANT: cost_breakdown MUST include all 7 fields:
+- compute: string (e.g., "$50/month")
+- storage: string (e.g., "$10/month")
+- database: string (e.g., "$25/month")
+- ai_api: string (e.g., "$5/month")
+- networking: string (e.g., "$10/month")
+- total_monthly: string (e.g., "$100/month")
+- total_yearly: string (e.g., "$1200/year")
+
+IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
+- risk_assessment: ["Risk 1", "Risk 2", "Risk 3", "Risk 4", "Risk 5"]
+- security_checklist: ["Item 1", "Item 2", ...]"""
     
     def _parse_architecture_options(self, content: str) -> list[ArchitectureOption]:
         """Parse architecture options from Claude response"""
@@ -269,7 +307,36 @@ Format as JSON with keys: recommended_option, justification, technology_stack, c
                 content = content.split("```")[1].split("```")[0].strip()
             
             data = json.loads(content)
-            return [ArchitectureOption(**opt) for opt in data]
+            
+            # Validate and fix each option
+            options = []
+            for opt in data:
+                # Fix stack if it's a list instead of dict
+                if isinstance(opt.get("stack"), list):
+                    stack_list = opt["stack"]
+                    opt["stack"] = {f"tech_{i}": tech for i, tech in enumerate(stack_list)}
+                
+                # Fix stack values if they are lists instead of strings
+                if isinstance(opt.get("stack"), dict):
+                    for key, value in opt["stack"].items():
+                        if isinstance(value, list):
+                            # Join list items into a string
+                            opt["stack"][key] = ", ".join(value)
+                
+                # Fix complexity if it's not exactly Low/Medium/High
+                complexity = opt.get("complexity", "Medium")
+                if complexity not in ["Low", "Medium", "High"]:
+                    # Try to extract the main word
+                    if "low" in complexity.lower():
+                        opt["complexity"] = "Low"
+                    elif "high" in complexity.lower():
+                        opt["complexity"] = "High"
+                    else:
+                        opt["complexity"] = "Medium"
+                
+                options.append(ArchitectureOption(**opt))
+            
+            return options
         except Exception as e:
             logger.error("Failed to parse architecture options from AI response: %s", e, exc_info=True)
             return self._get_default_options()
@@ -287,7 +354,40 @@ Format as JSON with keys: recommended_option, justification, technology_stack, c
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
             
+            # Try to fix common JSON issues
+            # Remove trailing commas before closing braces/brackets
+            import re
+            content = re.sub(r',(\s*[}\]])', r'\1', content)
+            
             data = json.loads(content)
+            
+            # Ensure cost_breakdown has all required fields
+            cost_data = data.get("cost_breakdown", {})
+            if "ai_api" not in cost_data:
+                cost_data["ai_api"] = "$0/month"
+            if "total_monthly" not in cost_data:
+                # Try to calculate from other fields or use a default
+                cost_data["total_monthly"] = cost_data.get("total", "$100/month")
+            if "total_yearly" not in cost_data:
+                # Extract monthly amount and multiply by 12
+                monthly = cost_data["total_monthly"]
+                try:
+                    amount = int(''.join(filter(str.isdigit, monthly)))
+                    cost_data["total_yearly"] = f"${amount * 12}/year"
+                except:
+                    cost_data["total_yearly"] = "$1200/year"
+            
+            # Fix risk_assessment if it's a dict instead of list
+            risk_assessment = data.get("risk_assessment", [])
+            if isinstance(risk_assessment, dict):
+                # Extract values from dict
+                risk_assessment = list(risk_assessment.values())
+            
+            # Fix security_checklist if it's a dict instead of list
+            security_checklist = data.get("security_checklist", [])
+            if isinstance(security_checklist, dict):
+                # Extract values from dict
+                security_checklist = list(security_checklist.values())
             
             return ProjectPlan(
                 project_id=str(uuid.uuid4()),
@@ -299,14 +399,15 @@ Format as JSON with keys: recommended_option, justification, technology_stack, c
                 recommended_option=data["recommended_option"],
                 justification=data["justification"],
                 technology_stack=data["technology_stack"],
-                cost_breakdown=CostBreakdown(**data["cost_breakdown"]),
+                cost_breakdown=CostBreakdown(**cost_data),
                 timeline_estimate=data["timeline_estimate"],
-                risk_assessment=data["risk_assessment"],
-                security_checklist=data["security_checklist"],
+                risk_assessment=risk_assessment,
+                security_checklist=security_checklist,
                 status="completed"
             )
         except Exception as e:
             logger.error("Failed to parse final plan from AI response: %s", e, exc_info=True)
+            logger.error("Content was: %s", content[:500])
             return self._get_default_plan(request, options)
     
     def _get_default_options(self) -> list[ArchitectureOption]:

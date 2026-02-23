@@ -12,24 +12,45 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
 
   const handleExportToScaffold = () => {
     if (projectPlan) {
-      // Prepare data for Scaffold AI
-      const scaffoldData = {
-        projectName: projectPlan.basics.name,
-        description: projectPlan.basics.description,
-        architecture: projectPlan.recommended_option,
-        techStack: projectPlan.technology_stack,
-        requirements: {
-          users: projectPlan.technical.user_count,
-          uptime: projectPlan.technical.uptime,
-          dataSize: projectPlan.technical.data_size,
-        },
-      };
-
-      // Store in localStorage for Scaffold AI to pick up
-      localStorage.setItem("plannerExport", JSON.stringify(scaffoldData));
+      console.log("ScaffoldIntegration: Preparing data for Scaffold AI");
       
-      // Open Scaffold AI in new tab
-      window.open("https://scaffold-ai.com?from=planner", "_blank");
+      // Determine which architecture to use
+      let selectedArchitecture = projectPlan.recommended_option;
+      let selectedStack = projectPlan.technology_stack;
+      
+      // If user selected a specific option, use that instead
+      if (projectPlan.selectedOptionIndex !== null && projectPlan.selectedOptionIndex !== undefined) {
+        const selectedOption = projectPlan.architecture_options[projectPlan.selectedOptionIndex];
+        if (selectedOption) {
+          selectedArchitecture = selectedOption.name;
+          selectedStack = selectedOption.stack;
+        }
+      }
+      
+      // Create a simple prompt with the essential information
+      const prompt = `I have a project plan from Project Planner AI:
+
+Project: ${projectPlan.basics.name}
+Description: ${projectPlan.basics.description}
+Architecture: ${selectedArchitecture}
+Tech Stack: ${Object.entries(selectedStack).map(([k, v]) => `${k}: ${v}`).join(", ")}
+Requirements: ${projectPlan.technical.user_count} users, ${projectPlan.technical.uptime} uptime
+
+Please help me build this architecture on AWS.`;
+      
+      // Encode just the prompt (much shorter)
+      const encodedPrompt = encodeURIComponent(prompt);
+      
+      // Also copy description to clipboard for easy pasting
+      navigator.clipboard.writeText(prompt).then(() => {
+        alert('Project description copied to clipboard! It will also auto-fill in Scaffold AI.');
+      }).catch(() => {
+        alert('Data saved for Scaffold AI!');
+      });
+      
+      // Open Scaffold AI (use env var for local testing, fallback to production)
+      const scaffoldUrl = process.env.NEXT_PUBLIC_SCAFFOLD_URL || "https://scaffold-ai.com";
+      window.open(`${scaffoldUrl}?from=planner&prompt=${encodedPrompt}`, "_blank");
     }
   };
 
@@ -103,11 +124,22 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
                   <div className="text-sm font-medium text-blue-900 mb-2">
                     Ready to export:
                   </div>
-                  <div className="text-xs text-blue-700">
+                  <div className="text-xs text-blue-700 mb-3">
                     <div>• {projectPlan.basics.name}</div>
                     <div>• {projectPlan.recommended_option}</div>
                     <div>• {Object.keys(projectPlan.technology_stack).length} technologies</div>
                   </div>
+                  <button
+                    onClick={() => {
+                      const description = `${projectPlan.basics.description}\n\nArchitecture: ${projectPlan.recommended_option}\n\nTech Stack: ${Object.entries(projectPlan.technology_stack).map(([k, v]) => `${k}: ${v}`).join(', ')}`;
+                      navigator.clipboard.writeText(description).then(() => {
+                        alert('Description copied to clipboard!');
+                      });
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-blue-300 text-blue-700 rounded hover:bg-blue-100 transition-all mb-2"
+                  >
+                    📋 Copy Description
+                  </button>
                 </div>
               ) : (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
@@ -166,7 +198,7 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
           {/* Footer */}
           <div className="border-t pt-4 mt-4">
             <a
-              href="https://scaffold-ai.com"
+              href={process.env.NEXT_PUBLIC_SCAFFOLD_URL || "https://scaffold-ai.com"}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center"

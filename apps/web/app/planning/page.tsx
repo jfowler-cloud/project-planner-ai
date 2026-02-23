@@ -20,6 +20,7 @@ export default function PlanningPage() {
   const [options, setOptions] = useState<any[]>([]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reviewCount, setReviewCount] = useState(3);
 
   useEffect(() => {
     const projectRequest = sessionStorage.getItem("projectRequest");
@@ -30,6 +31,7 @@ export default function PlanningPage() {
     }
 
     const request = JSON.parse(projectRequest);
+    setReviewCount(request.review_count || 3);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
     // Use fetch with streaming instead of EventSource for POST
@@ -100,17 +102,33 @@ export default function PlanningPage() {
                     break;
                   
                   case "reviewing":
-                    setStatus(`Performing critical review ${data.iteration}/${data.total || 10}...`);
+                    setStatus(`Performing critical review ${data.iteration}/${data.total || reviewCount}...`);
                     break;
                   
                   case "finalizing":
                     setStatus("Finalizing recommendation...");
+                    // Auto-select serverless option if nothing selected yet
+                    if (selectedOption === null && options.length > 0) {
+                      const serverlessIndex = options.findIndex((opt: any) => 
+                        opt.name.toLowerCase().includes('serverless')
+                      );
+                      if (serverlessIndex !== -1) {
+                        setSelectedOption(serverlessIndex);
+                      } else {
+                        setSelectedOption(0); // Fallback to first option
+                      }
+                    }
                     break;
                   
                   case "completed":
                     setStatus("Plan completed!");
                     if (data.plan) {
-                      sessionStorage.setItem("projectPlan", JSON.stringify(data.plan));
+                      // Store the selected option index along with the plan
+                      const planWithSelection = {
+                        ...data.plan,
+                        selectedOptionIndex: selectedOption
+                      };
+                      sessionStorage.setItem("projectPlan", JSON.stringify(planWithSelection));
                       setTimeout(() => router.push(`/results/${data.plan.project_id}`), 1000);
                     }
                     break;
@@ -176,7 +194,7 @@ export default function PlanningPage() {
                 </div>
                 <div className={`flex items-center ${progress >= 80 ? "text-green-600" : "text-gray-400"}`}>
                   <span className="mr-2">{progress >= 80 ? "✓" : "○"}</span>
-                  <span>Performing critical reviews (10 iterations)</span>
+                  <span>Performing critical reviews ({reviewCount} iterations)</span>
                 </div>
                 <div className={`flex items-center ${progress >= 90 ? "text-green-600" : "text-gray-400"}`}>
                   <span className="mr-2">{progress >= 90 ? "✓" : "○"}</span>
