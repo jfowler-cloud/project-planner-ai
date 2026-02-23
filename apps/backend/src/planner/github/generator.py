@@ -1,5 +1,6 @@
 from ..models.project import ProjectPlan
 from .client import GitHubClient
+from ..validation import validate_repo_name
 
 
 DEV_SCRIPT = """#!/bin/bash
@@ -116,8 +117,8 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
     """Generate GitHub repository from project plan"""
     client = GitHubClient(github_token)
     
-    # Create repository
-    repo_name = plan.basics.name.lower().replace(" ", "-")
+    # Create repository - sanitize name to prevent invalid GitHub repo names
+    repo_name = validate_repo_name(plan.basics.name)
     domain = f"{repo_name}.com"
     
     repo = await client.create_repository(

@@ -21,6 +21,16 @@ export default function PlanningPage() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reviewCount, setReviewCount] = useState(3);
+  const [rateLimitStats, setRateLimitStats] = useState<{ hour_remaining: number } | null>(null);
+
+  // Fetch rate limit quota on mount so users know how many plans they have left
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    fetch(`${apiUrl}/api/v1/rate-limit/stats?user_id=anonymous`)
+      .then(r => r.json())
+      .then(data => setRateLimitStats(data))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const projectRequest = sessionStorage.getItem("projectRequest");
@@ -155,6 +165,12 @@ export default function PlanningPage() {
           <h1 className="text-3xl font-bold text-center mb-8">
             {error ? "⚠️ Error" : "🤖 AI Planning in Progress"}
           </h1>
+
+          {rateLimitStats && (
+            <p className="text-center text-sm text-gray-500 mb-4">
+              {rateLimitStats.hour_remaining} plan{rateLimitStats.hour_remaining !== 1 ? "s" : ""} remaining this hour
+            </p>
+          )}
 
           {error ? (
             <div className="text-center">

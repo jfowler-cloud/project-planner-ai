@@ -94,4 +94,45 @@ class ProjectPlan(BaseModel):
     timeline_estimate: str
     risk_assessment: list[str]
     security_checklist: list[str]
+    is_fallback: bool = False  # True when AI generation failed and defaults were used
+    status: Literal["planning", "reviewing", "completed", "failed"] = "planning"
+
+
+# --- Models used by the pipeline (main.py) ---
+
+class QuestionnaireInput(BaseModel):
+    """Alias for ProjectRequest used by the pipeline."""
+    basics: ProjectBasics
+    technical: TechnicalRequirements
+    preferences: TechnologyPreferences = Field(default_factory=TechnologyPreferences)
+    review_count: int = Field(default=3, ge=1, le=10)
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+class ReviewFinding(BaseModel):
+    """A single critical review finding from the pipeline."""
+    iteration: int
+    category: str
+    findings: str
+    recommendations: str
+    risk_level: Literal["Low", "Medium", "High", "Critical"] = "Medium"
+
+
+class PlanOutput(BaseModel):
+    """Alias for ProjectPlan used by the pipeline."""
+    project_id: str
+    created_at: datetime
+    basics: ProjectBasics
+    technical: TechnicalRequirements
+    preferences: TechnologyPreferences
+    architecture_options: list[ArchitectureOption]
+    recommended_option: str
+    justification: str
+    technology_stack: dict[str, str]
+    cost_breakdown: CostBreakdown
+    timeline_estimate: str
+    risk_assessment: list[str]
+    security_checklist: list[str]
+    is_fallback: bool = False
     status: Literal["planning", "reviewing", "completed", "failed"] = "planning"
