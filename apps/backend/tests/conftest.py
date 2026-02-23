@@ -1,8 +1,13 @@
 """Shared pytest fixtures."""
 
+import os
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
+
+# Ensure boto3 doesn't try to use an empty AWS profile during tests
+os.environ.setdefault("AI_PROVIDER", "anthropic")
+os.environ.pop("AWS_PROFILE", None)
 
 from planner.main import app
 from planner.models.project import (
@@ -11,13 +16,27 @@ from planner.models.project import (
     QuestionnaireInput,
     ReviewFinding,
 )
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @pytest.fixture
 def client():
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture
+def sample_arch_option():
+    return ArchitectureOption(
+        name="Next.js + FastAPI + PostgreSQL",
+        stack={"frontend": "Next.js", "backend": "FastAPI", "database": "PostgreSQL", "infra": "Railway", "auth": "NextAuth"},
+        pros=["Fast development", "Type-safe"],
+        cons=["Not serverless"],
+        monthly_cost_estimate="$20-50/month",
+        complexity="low",
+        best_for="Small teams moving fast",
+        mermaid_diagram="graph TD\n  A[Next.js] --> B[FastAPI]\n  B --> C[PostgreSQL]",
+    )
 
 
 @pytest.fixture
@@ -37,20 +56,6 @@ def sample_questionnaire():
 
 
 @pytest.fixture
-def sample_arch_option():
-    return ArchitectureOption(
-        name="Next.js + FastAPI + PostgreSQL",
-        stack={"frontend": "Next.js", "backend": "FastAPI", "database": "PostgreSQL", "infra": "Railway", "auth": "NextAuth"},
-        pros=["Fast development", "Type-safe"],
-        cons=["Not serverless"],
-        monthly_cost_estimate="$20-50/month",
-        complexity="low",
-        best_for="Small teams moving fast",
-        mermaid_diagram="graph TD\n  A[Next.js] --> B[FastAPI]\n  B --> C[PostgreSQL]",
-    )
-
-
-@pytest.fixture
 def sample_plan(sample_arch_option):
     return PlanOutput(
         plan_id="test-plan-123",
@@ -66,7 +71,7 @@ def sample_plan(sample_arch_option):
             )
         ],
         cost_estimate_ai=0.05,
-        created_at=datetime(2026, 2, 23),
+        created_at=datetime(2026, 2, 23, tzinfo=timezone.utc),
     )
 
 

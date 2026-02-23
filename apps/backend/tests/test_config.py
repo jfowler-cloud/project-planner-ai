@@ -10,7 +10,7 @@ def test_settings_defaults():
     assert settings.debug is False
     assert settings.default_model == "claude-sonnet-4-20250514"
     assert settings.max_tokens == 4096
-    assert settings.temperature == 1.0
+    assert settings.temperature == 0.3
     assert settings.cache_ttl == 3600
     assert settings.rate_limit_per_hour == 10
 

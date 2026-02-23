@@ -31,12 +31,13 @@ def test_templates_endpoint_structure():
 
 
 def test_generate_repo_not_implemented():
-    """Test generate repo endpoint returns 501"""
+    """Test generate repo endpoint requires a valid plan body (not query params)."""
     response = client.post(
         "/api/v1/generate-repo",
         params={"project_id": "test-123", "github_token": "token"}
     )
-    assert response.status_code == 501
+    # Endpoint exists but requires a ProjectPlan body — missing body = 422
+    assert response.status_code == 422
 
 
 @patch('planner.api.v1.routes.cache_client')

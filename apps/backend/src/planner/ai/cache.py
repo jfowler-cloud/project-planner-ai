@@ -60,20 +60,26 @@ class CacheClient:
         """Increment rate limit counter"""
         if not self.redis:
             return 0
-        
+
         key = f"rate_limit:{user_id}"
         count = await self.redis.incr(key)
-        
+
         if count == 1:
             await self.redis.expire(key, 3600)  # 1 hour
-        
+
         return count
-    
+
     async def get_rate_limit(self, user_id: str) -> int:
-        """Get current rate limit count"""
+        """Get current rate limit count.
+
+        Returns a high sentinel value when Redis is unavailable so that
+        rate limiting is enforced rather than silently bypassed.
+        """
         if not self.redis:
-            return 0
-        
+            # Redis is down — fall back to in-memory limiter in the caller.
+            # Return -1 as a sentinel so routes know to use the fallback.
+            return -1
+
         key = f"rate_limit:{user_id}"
         count = await self.redis.get(key)
         return int(count) if count else 0

@@ -1,15 +1,21 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 import json
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 from ...config import settings
 from ...models.project import ProjectRequest, ProjectPlan
 from ...ai.claude import ClaudeClient
 from ...ai.cache import cache_client
 from ...github.generator import generate_repository
+from ...rate_limit import rate_limiter
+from ...validation import validate_repo_name
+
+# In-memory plan store: plan_id -> ProjectPlan dict
+# Survives within a single server process; plans are retrievable by ID
+_plan_store: dict[str, dict] = {}
 
 
 @asynccontextmanager
@@ -32,10 +38,18 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-GitHub-Token"],
 )
 
 claude_client = ClaudeClient()
+
+
+def _check_rate_limit(user_id: str) -> None:
+    """Check rate limit using Redis with in-memory fallback."""
+    # Will be called after async get_rate_limit; use sync in-memory limiter as fallback
+    allowed, reason = rate_limiter.is_allowed(user_id)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=reason)
 
 
 @app.get("/health")
@@ -44,109 +58,131 @@ async def health_check():
     return {"status": "healthy", "version": settings.api_version}
 
 
+@app.get("/api/v1/rate-limit/stats")
+async def rate_limit_stats(user_id: str = "anonymous"):
+    """Return remaining rate limit quota for the given user."""
+    stats = rate_limiter.get_stats(user_id)
+    redis_count = await cache_client.get_rate_limit(user_id)
+    return {
+        **stats,
+        "redis_available": redis_count != -1,
+        "redis_count": redis_count if redis_count != -1 else None,
+    }
+
+
 @app.post("/api/v1/plan")
 async def create_plan(request: ProjectRequest) -> ProjectPlan:
     """Create a project plan"""
-    
-    # Check rate limit
+
     user_id = request.user_id or request.session_id or "anonymous"
-    rate_count = await cache_client.get_rate_limit(user_id)
-    
-    if rate_count >= settings.rate_limit_per_hour:
+
+    # Redis rate limit with in-memory fallback
+    redis_count = await cache_client.get_rate_limit(user_id)
+    if redis_count == -1:
+        # Redis unavailable — use in-memory limiter
+        _check_rate_limit(user_id)
+    elif redis_count >= settings.rate_limit_per_hour:
         raise HTTPException(
             status_code=429,
             detail=f"Rate limit exceeded. Max {settings.rate_limit_per_hour} plans per hour."
         )
-    
+
     # Check cache
     request_dict = request.model_dump()
     cached_plan = await cache_client.get_cached_plan(request_dict)
-    
+
     if cached_plan:
         return ProjectPlan(**cached_plan)
-    
-    # Increment rate limit
+
+    # Increment counters
     await cache_client.increment_rate_limit(user_id)
-    
+    rate_limiter.record_request(user_id)
+
     # Generate architecture options
     options = await claude_client.generate_architecture_options(request)
-    
+
     # Perform critical reviews
     reviews = []
     for i in range(1, request.review_count + 1):
         review = await claude_client.perform_critical_review(request, options, i)
         reviews.append(review)
-    
+
     # Generate final recommendation
     plan = await claude_client.generate_final_recommendation(request, options, reviews)
-    
-    # Cache the plan
-    await cache_client.cache_plan(request_dict, plan.model_dump())
-    
+
+    # Persist plan server-side
+    plan_dict = plan.model_dump(mode="json")
+    _plan_store[plan.project_id] = plan_dict
+    await cache_client.cache_plan(request_dict, plan_dict)
+
     return plan
 
 
 @app.post("/api/v1/plan/stream")
 async def create_plan_stream(request: ProjectRequest):
     """Create a project plan with streaming progress"""
-    
+
     async def generate_progress() -> AsyncIterator[str]:
-        """Stream progress updates"""
         user_id = request.user_id or request.session_id or "anonymous"
-        
-        # Check rate limit
-        rate_count = await cache_client.get_rate_limit(user_id)
-        if rate_count >= settings.rate_limit_per_hour:
+
+        # Rate limit check
+        redis_count = await cache_client.get_rate_limit(user_id)
+        if redis_count == -1:
+            allowed, reason = rate_limiter.is_allowed(user_id)
+            if not allowed:
+                yield f"data: {json.dumps({'error': reason, 'status': 'error'})}\n\n"
+                return
+        elif redis_count >= settings.rate_limit_per_hour:
             yield f"data: {json.dumps({'error': 'Rate limit exceeded', 'status': 'error'})}\n\n"
             return
-        
+
         # Check cache
         request_dict = request.model_dump()
         cached_plan = await cache_client.get_cached_plan(request_dict)
-        
+
         if cached_plan:
             yield f"data: {json.dumps({'status': 'cached', 'progress': 100, 'plan': cached_plan})}\n\n"
             return
-        
+
         await cache_client.increment_rate_limit(user_id)
-        
-        # Analyzing requirements
+        rate_limiter.record_request(user_id)
+
         yield f"data: {json.dumps({'status': 'analyzing', 'progress': 5})}\n\n"
-        
-        # Generate options
+
         yield f"data: {json.dumps({'status': 'generating_options', 'progress': 10})}\n\n"
         options = await claude_client.generate_architecture_options(request)
         yield f"data: {json.dumps({'status': 'options_generated', 'progress': 25, 'options': [o.model_dump(mode='json') for o in options]})}\n\n"
-        
-        # Reviews (25% to 85% = 60% total, divided by review_count)
+
         reviews = []
         review_count = request.review_count
         progress_per_review = 60 / review_count
-        
+
         for i in range(1, review_count + 1):
             progress = 25 + int(i * progress_per_review)
             yield f"data: {json.dumps({'status': 'reviewing', 'progress': progress, 'iteration': i, 'total': review_count})}\n\n"
             review = await claude_client.perform_critical_review(request, options, i)
             reviews.append(review)
-        
-        # Final recommendation
+
         yield f"data: {json.dumps({'status': 'finalizing', 'progress': 90})}\n\n"
         plan = await claude_client.generate_final_recommendation(request, options, reviews)
-        
-        # Cache
-        plan_dict = plan.model_dump(mode='json')
+
+        plan_dict = plan.model_dump(mode="json")
+        # Persist server-side so /api/v1/plan/{id} can retrieve it
+        _plan_store[plan.project_id] = plan_dict
         await cache_client.cache_plan(request_dict, plan_dict)
-        
+
         yield f"data: {json.dumps({'status': 'completed', 'progress': 100, 'plan': plan_dict})}\n\n"
-    
+
     return StreamingResponse(generate_progress(), media_type="text/event-stream")
 
 
 @app.get("/api/v1/plan/{project_id}")
 async def get_plan(project_id: str):
-    """Get a specific plan by ID"""
-    # TODO: Implement DynamoDB lookup
-    raise HTTPException(status_code=404, detail="Plan not found")
+    """Get a specific plan by ID (in-memory store, survives within process)"""
+    plan = _plan_store.get(project_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return plan
 
 
 @app.get("/api/v1/templates")
@@ -190,10 +226,22 @@ async def get_templates():
 
 
 @app.post("/api/v1/generate-repo")
-async def generate_repo(plan: ProjectPlan, github_token: str):
-    """Generate GitHub repository from plan"""
+async def generate_repo(
+    plan: ProjectPlan,
+    x_github_token: Optional[str] = Header(default=None, alias="X-GitHub-Token"),
+):
+    """Generate GitHub repository from plan.
+
+    GitHub token must be passed via the X-GitHub-Token header (not a query parameter)
+    to avoid token exposure in server logs and browser history.
+    """
+    if not x_github_token:
+        raise HTTPException(
+            status_code=401,
+            detail="GitHub token required. Pass it via the X-GitHub-Token header."
+        )
     try:
-        repo_url = await generate_repository(plan, github_token)
+        repo_url = await generate_repository(plan, x_github_token)
         return {"repo_url": repo_url, "status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate repository: {str(e)}")

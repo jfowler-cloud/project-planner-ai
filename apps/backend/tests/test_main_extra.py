@@ -38,7 +38,6 @@ def test_get_plan_found(client, sample_plan):
 
 
 def test_create_repo_success(client, sample_plan, monkeypatch):
-    monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
     plan_dict = sample_plan.model_dump(mode="json")
     _seed_plan(plan_dict)
 
@@ -51,11 +50,10 @@ def test_create_repo_success(client, sample_plan, monkeypatch):
     }
 
     with patch("planner.main.generate_repo", new=AsyncMock(return_value=mock_result)):
-        r = client.post("/api/github/create-repo", json={
-            "plan_id": sample_plan.plan_id,
-            "repo_name": "my-app",
-            "private": True,
-        })
+        r = client.post("/api/github/create-repo",
+            json={"plan_id": sample_plan.plan_id, "repo_name": "my-app", "private": True},
+            headers={"X-GitHub-Token": "ghp_test"},
+        )
 
     assert r.status_code == 200
     assert r.json()["repo_url"] == "https://github.com/user/my-app"
@@ -64,15 +62,15 @@ def test_create_repo_success(client, sample_plan, monkeypatch):
 
 def test_create_repo_github_error(client, sample_plan, monkeypatch):
     monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
+def test_create_repo_github_error(client, sample_plan, monkeypatch):
     plan_dict = sample_plan.model_dump(mode="json")
     _seed_plan(plan_dict)
 
     with patch("planner.main.generate_repo", new=AsyncMock(side_effect=Exception("API error"))):
-        r = client.post("/api/github/create-repo", json={
-            "plan_id": sample_plan.plan_id,
-            "repo_name": "my-app",
-            "private": True,
-        })
+        r = client.post("/api/github/create-repo",
+            json={"plan_id": sample_plan.plan_id, "repo_name": "my-app", "private": True},
+            headers={"X-GitHub-Token": "ghp_test"},
+        )
 
     assert r.status_code == 502
     assert "GitHub error" in r.json()["detail"]
@@ -90,6 +88,9 @@ def test_generate_plan_html_injection(client):
 
 def test_generate_plan_streams_with_pipeline(client):
     """Test that generate_plan calls the pipeline and streams events."""
+    from planner.rate_limit import rate_limiter
+    rate_limiter._requests.clear()  # reset in-memory rate limit
+
     async def fake_pipeline(q):
         yield 'data: {"step": 1, "total": 1, "message": "done", "partial": null, "done": true}\n\n'
 

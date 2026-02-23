@@ -80,8 +80,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/generate-repo`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, github_token: githubToken }),
+        headers: {
+          "Content-Type": "application/json",
+          "X-GitHub-Token": githubToken,
+        },
+        body: JSON.stringify({ plan }),
       });
       
       if (!response.ok) {

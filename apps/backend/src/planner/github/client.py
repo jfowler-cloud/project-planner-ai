@@ -3,6 +3,14 @@ from typing import Optional
 from ..config import settings
 
 
+def get_github_token(header_token: Optional[str] = None) -> str:
+    """Resolve GitHub token from request header or settings, raising if missing."""
+    token = header_token or settings.github_token
+    if not token:
+        raise ValueError("GitHub token is required. Provide it via the X-GitHub-Token header.")
+    return token
+
+
 class GitHubClient:
     """Client for GitHub API"""
     
