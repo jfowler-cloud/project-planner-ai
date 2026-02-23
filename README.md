@@ -40,57 +40,106 @@
 
 ## Critical Review & Recommendations
 
-This section provides an honest assessment of the project's current state and actionable recommendations for improvement.
+Honest assessment of the codebase as of Feb 2026, based on a full source review.
 
-### High Priority
+### Resolved (Previously Flagged)
 
-**1. ~~Bug: Non-streaming endpoint ignores `review_count`~~ ✅ Fixed**
+- ~~Non-streaming endpoint ignores `review_count`~~ -- Fixed in `routes.py`
+- ~~No frontend tests~~ -- 3 test files added (ErrorBoundary, Questionnaire, Planning)
+- ~~Silent AI parsing failures~~ -- `claude.py` now logs with `exc_info=True`
+- ~~No error boundaries~~ -- `error.tsx` files added for `/planning` and `/results`
+- ~~Overly permissive CORS~~ -- Restricted to GET/POST/OPTIONS
+- ~~Review truncation~~ -- `[:200]` slice removed from recommendation prompt
+- ~~Docker health checks missing~~ -- Added for all services
 
-`routes.py` now uses `range(1, request.review_count + 1)` in both the streaming and non-streaming endpoints.
+### P0 -- Dual FastAPI App / Missing Models
 
-**2. ~~No frontend tests~~ ✅ Fixed**
+The backend ships **two separate FastAPI applications** that are not connected:
 
-3 test files added covering `ErrorBoundary`, `QuestionnairePage`, and `PlanningPage`. Jest + `@testing-library/react` added to devDependencies with `jest.config.mjs`. CI pipeline now runs `npm test` before the build step.
+1. `apps/backend/src/planner/main.py` -- the newer pipeline-based app (`/api/plans/generate`), with rate limiting, caching, input sanitization, and GitHub repo creation
+2. `apps/backend/src/planner/api/v1/routes.py` -- the older v1 app (`/api/v1/plan`, `/api/v1/plan/stream`), using `ClaudeClient` directly
+3. `apps/backend/src/main.py` -- imports and runs only the **v1 routes** app
 
-**3. ~~Silent AI parsing failures~~ ✅ Fixed**
+The frontend (`planning/page.tsx`) calls `/api/v1/plan/stream`, so the newer pipeline (`main.py`) is **never reached** in normal use. Additionally, `main.py` and `pipeline.py` import `QuestionnaireInput`, `PlanOutput`, and `ReviewFinding` from `models.project` -- but **these classes do not exist** in that file. The pipeline app will crash with `ImportError` if started.
 
-`_parse_architecture_options` and `_parse_final_plan` in `claude.py` now log the exception with `logger.error(..., exc_info=True)` before falling back to defaults.
+**Recommendation:** Consolidate into a single FastAPI application. Either migrate the pipeline logic into the v1 routes or switch the frontend to call the pipeline endpoints. Add the missing Pydantic models (`QuestionnaireInput`, `PlanOutput`, `ReviewFinding`) that the pipeline expects.
 
-**4. ~~No error boundaries in the frontend~~ ✅ Fixed**
+### P0 -- Session Storage as Data Bus
 
-Next.js App Router `error.tsx` files added for `/planning` and `/results/[id]` routes. A reusable class-based `ErrorBoundary` component also added to `components/`.
+The frontend uses `sessionStorage` to shuttle data between `/questionnaire` -> `/planning` -> `/results`. This means:
+- Refreshing any page loses all state
+- Opening a results link in a new tab shows nothing
+- There is no shareable URL or plan retrieval
 
-### Medium Priority
+**Recommendation:** Persist completed plans server-side (even an in-memory dict gated by `plan_id` is better than nothing). Return the `plan_id` in the SSE stream, redirect to `/results/{plan_id}`, and fetch the plan from the API on mount.
 
-**5. ~~Overly permissive CORS configuration~~ ✅ Fixed**
+### P1 -- Scaffold AI Handoff is URL-Parameter Only
 
-`routes.py` now restricts to `allow_methods=["GET", "POST", "OPTIONS"]` and `allow_headers=["Content-Type", "Authorization"]`.
+The integration encodes the entire plan description into a URL query parameter (`?from=planner&prompt=...`). On the Scaffold AI side, `usePlannerImport.ts` reads it back and stuffs it into the chat textarea. This works but:
+- Long plans can exceed URL length limits (~2000 chars in some browsers/proxies)
+- Structured data (tech stack, requirements, architecture name) is flattened into a prose string and then ignored -- Scaffold AI only gets `description: prompt` with empty `architecture`, `techStack`, and `requirements`
+- No validation or acknowledgment of what was received
 
-**6. Session storage is not "persistence"**
+**Recommendation:** Use `postMessage` between windows or a shared backend endpoint (e.g., store the plan in a short-lived key and pass only the key in the URL). Parse the structured fields on the Scaffold AI side so the architect agent receives real metadata, not just a text blob.
 
-The frontend uses `sessionStorage` to pass data between pages. This data is lost when the browser tab closes. True persistence requires the planned DynamoDB integration.
+### P1 -- Cost Estimates Are Static Fallbacks
 
-**7. ~~Review truncation in recommendation prompt~~ ✅ Fixed**
+The fallback `_get_default_plan` returns hardcoded costs (`$50/month`, `$10/month`, etc.). If the AI response fails to parse, the user sees these numbers with no indication they are placeholder values.
 
-The `[:200]` slice removed from `_build_recommendation_prompt` in `claude.py`. Full review findings now reach the final recommendation AI call.
+**Recommendation:** Mark fallback cost data as "estimated -- AI generation failed" in the response. Add a `is_fallback: bool` field to `ProjectPlan` so the frontend can display a warning banner.
 
-**8. Cost estimates are static**
+### P2 -- No Frontend Rate Limit Feedback
 
-The cost breakdown fallback uses hardcoded values. No validation engine cross-checks AI-generated figures against actual cloud pricing.
+The backend enforces 10 plans/hour, but the frontend has no awareness of remaining quota. Users hit 429 errors with no prior warning.
 
-### Low Priority
+**Recommendation:** Call `/api/rate-limit/stats` (already exists in `main.py`) on page load and show remaining quota in the UI. Disable the "Generate" button when quota is exhausted.
 
-**9. No rate limiting per session on the frontend**
+### P1 -- GitHub Token Passed as Query Parameter (Security)
 
-Rate limiting is enforced server-side only. The frontend doesn't communicate remaining quota to users before they trigger plan generation.
+The v1 `generate-repo` endpoint (`routes.py:193`) accepts `github_token: str` as a **query parameter**:
 
-**10. ~~Docker configuration could be improved~~ ✅ Fixed**
+```python
+async def generate_repo(plan: ProjectPlan, github_token: str):
+```
 
-Health checks added for all three services in `docker-compose.yml`. Frontend now waits for a healthy backend before starting.
+Query parameters appear in server access logs, browser history, proxy logs, and Referer headers. The newer `planner/main.py` correctly uses the `X-GitHub-Token` header instead.
 
-**11. Missing API documentation tooling**
+**Recommendation:** Move the token to an `Authorization` or `X-GitHub-Token` header. This is the single most important security fix before the repo generation feature goes live.
 
-FastAPI auto-generates OpenAPI docs at `/docs`. Consider adding request/response examples to route docstrings for richer documentation.
+### P1 -- Two Competing AI Client Implementations
+
+The backend has two separate Claude/Bedrock client implementations that serve different endpoints:
+
+1. `ai/client.py` -- LangChain-based (`ChatBedrock`), used by the pipeline (`main.py`). Uses the model from `constants.py` (Claude 3 Opus) with `temperature=0.3`.
+2. `ai/claude.py` -- Raw `anthropic`/`boto3` SDK, used by v1 routes. Uses tier-based model selection from `config.py` with `temperature=1.0`.
+
+These use different model IDs, different temperatures, and different retry strategies. The tier-based model selection in `claude.py` (testing/optimized/premium) is not available in the pipeline path.
+
+**Recommendation:** Consolidate to one client. The tier-based model selection and retry logic in `claude.py` is more mature -- use that as the foundation and add the streaming pipeline on top.
+
+### P1 -- Pipeline Always Runs 10 Reviews (Ignores User Selection)
+
+The pipeline (`pipeline.py`) iterates over all 10 `REVIEW_CATEGORIES` unconditionally (`total_steps = 12`). The user's `review_count` slider (1-10) is respected by the v1 streaming endpoint in `routes.py`, but the pipeline ignores it entirely. If the app is ever migrated to use the pipeline, users will always get 10 reviews regardless of their selection.
+
+**Recommendation:** Pass `review_count` into `run_pipeline` and iterate over `REVIEW_CATEGORIES[:review_count]` instead of the full list.
+
+### P2 -- Redis Cache Bypassed When Redis Is Down
+
+When Redis is unavailable, `CacheClient` methods return `0`/`None` silently. This means rate limiting is **completely disabled** -- `get_rate_limit` returns `0`, so the `>= settings.rate_limit_per_hour` check never triggers. The in-memory `RateLimiter` in `planner/main.py` doesn't have this problem, but it's on the unreachable pipeline app.
+
+**Recommendation:** Add an in-memory fallback rate limiter to the v1 routes, or return a high count from `get_rate_limit` when Redis is down so rate limiting is enforced rather than silently disabled.
+
+### P2 -- Repo Name Not Sanitized in v1 Route
+
+The v1 `generate_repository` function (`github/generator.py:120`) builds the repo name with a simple `.lower().replace(" ", "-")` but does not validate or sanitize the result. A project name like `../../../etc` would produce a problematic repo name. The newer `planner/main.py` path uses `validate_repo_name()` from `validation.py` which properly normalizes and length-checks. The v1 route skips this entirely.
+
+**Recommendation:** Apply `validate_repo_name()` in `generator.py` before passing to the GitHub API.
+
+### P2 -- Missing API Documentation
+
+FastAPI auto-generates OpenAPI at `/docs` but endpoints lack descriptions, request examples, and response schemas.
+
+**Recommendation:** Add `summary`, `description`, and `response_model` to each route decorator. This is low effort and high payoff for anyone integrating with the API.
 
 ---
 
@@ -375,14 +424,26 @@ project-planner-ai/
 
 ## API Routes
 
+**v1 Routes** (`api/v1/routes.py` -- currently active, used by frontend):
+
 | Method | Path | Status | Description |
 |--------|------|--------|-------------|
 | GET | `/health` | Working | Health check |
-| POST | `/api/v1/plan` | Working | Non-streaming plan generation (bug: ignores review_count) |
+| POST | `/api/v1/plan` | Working | Non-streaming plan generation |
 | POST | `/api/v1/plan/stream` | Working | Streaming plan generation with SSE |
 | GET | `/api/v1/plan/{project_id}` | Stubbed | Returns 404 (needs DynamoDB) |
 | GET | `/api/v1/templates` | Working | Common project templates |
 | POST | `/api/v1/generate-repo` | Stubbed | Returns 501 (not implemented) |
+
+**Pipeline Routes** (`planner/main.py` -- not wired up, has missing model imports):
+
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/health` | Unreachable | Health check with Bedrock status |
+| POST | `/api/plans/generate` | Unreachable | 10-step pipeline with SSE (missing models) |
+| GET | `/api/plans/{plan_id}` | Unreachable | Retrieve cached plan |
+| POST | `/api/github/create-repo` | Unreachable | GitHub repo generation |
+| GET | `/api/rate-limit/stats` | Unreachable | Rate limit stats for caller |
 
 ---
 
