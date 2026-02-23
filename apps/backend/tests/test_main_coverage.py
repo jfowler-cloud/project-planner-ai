@@ -65,18 +65,16 @@ def test_check_bedrock_directly():
     assert result is True
 
 
-def test_create_repo_loop_skips_non_matching_entries(client, sample_plan, monkeypatch):
+def test_create_repo_loop_skips_non_matching_entries(client, sample_plan):
     """create_repo loop iterates entries where plan_id doesn't match — covers 160->158."""
-    monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
     from planner.cache import response_cache
     # Seed with a different plan_id so the loop iterates but doesn't match
     response_cache.set("decoy-key", {"plan_id": "different-plan", "data": "x"})
 
-    r = client.post("/api/github/create-repo", json={
-        "plan_id": "nonexistent-plan-abc",
-        "repo_name": "my-app",
-        "private": True,
-    })
+    r = client.post("/api/github/create-repo",
+        json={"plan_id": "nonexistent-plan-abc", "repo_name": "my-app", "private": True},
+        headers={"X-GitHub-Token": "ghp_test"},
+    )
     assert r.status_code == 404
     response_cache.clear()
     """force_refresh=True skips cache read and write."""
@@ -156,17 +154,13 @@ def test_get_plan_cache_has_entries_but_no_match(client, sample_plan):
     response_cache.clear()
 
 
-def test_create_repo_invalid_plan_data(client, monkeypatch):
+def test_create_repo_invalid_plan_data(client):
     """If cached plan data is malformed, returns 422."""
-    monkeypatch.setenv("GITHUB_TOKEN", "ghp_test")
-    # Seed cache with invalid plan data
-    from planner.cache import make_cache_key
     response_cache.set("bad-key", {"plan_id": "bad-plan-xyz", "garbage": True})
 
-    r = client.post("/api/github/create-repo", json={
-        "plan_id": "bad-plan-xyz",
-        "repo_name": "my-app",
-        "private": True,
-    })
+    r = client.post("/api/github/create-repo",
+        json={"plan_id": "bad-plan-xyz", "repo_name": "my-app", "private": True},
+        headers={"X-GitHub-Token": "ghp_test"},
+    )
     assert r.status_code == 422
     response_cache.clear()

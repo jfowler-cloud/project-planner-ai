@@ -238,3 +238,91 @@ def _format_costs(costs) -> str:
 - Networking: {costs.networking}
 - **Total Monthly:** {costs.total_monthly}
 - **Total Yearly:** {costs.total_yearly}"""
+
+
+# ---------------------------------------------------------------------------
+# Public API used by routes and tests
+# ---------------------------------------------------------------------------
+
+from ..models.github import RepoResult
+from ..models.project import PlanOutput
+
+
+def _stack_table(stack: dict) -> str:
+    """Render technology stack as a markdown table."""
+    rows = ["| Layer | Technology |", "|-------|------------|"]
+    for k, v in stack.items():
+        rows.append(f"| {k.title()} | {v} |")
+    return "\n".join(rows)
+
+
+def _findings_summary(plan: PlanOutput) -> str:
+    """Summarise review findings as a markdown list."""
+    if not plan.review_findings:
+        return "_No review findings recorded._"
+    lines = []
+    for f in plan.review_findings:
+        lines.append(f"### {f.category.title()} (risk: {f.risk_level})")
+        for finding in f.findings:
+            lines.append(f"- {finding}")
+        if f.recommendations:
+            lines.append("  **Recommendations:**")
+            for rec in f.recommendations:
+                lines.append(f"  - {rec}")
+    return "\n".join(lines)
+
+
+async def generate_repo(client, plan: PlanOutput, request) -> RepoResult:
+    """
+    Create a GitHub repository from a project plan.
+
+    Parameters
+    ----------
+    client : GitHubClient
+        Authenticated GitHub client.
+    plan : PlanOutput
+        The generated project plan.
+    request : RepoRequest
+        Repository creation options (name, private, include_sop, …).
+    """
+    repo_name = validate_repo_name(request.repo_name)
+    description = request.description or (
+        plan.recommended.name if plan.recommended else repo_name
+    )
+
+    repo = await client.create_repo(
+        name=repo_name,
+        description=description,
+        private=request.private,
+    )
+    repo_url = repo.get("html_url", "")
+    files_created: list[str] = []
+
+    async def _add(path: str, content: str, message: str) -> None:
+        await client.create_file(repo["full_name"] if "full_name" in repo else f"testuser/{repo_name}", path, content, message)
+        files_created.append(path)
+
+    # README
+    stack_md = _stack_table(plan.recommended.stack) if plan.recommended else ""
+    findings_md = _findings_summary(plan)
+    readme = f"# {repo_name}\n\n{description}\n\n## Stack\n\n{stack_md}\n\n## Review Findings\n\n{findings_md}\n"
+    await _add("README.md", readme, "Add README")
+
+    # .gitignore
+    await _add(".gitignore", "*.pyc\n__pycache__/\n.env\n.venv/\nnode_modules/\n.next/\n", "Add .gitignore")
+
+    # CI workflow
+    ci = "name: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo 'Add your test commands here'\n"
+    await _add(".github/workflows/ci.yml", ci, "Add CI workflow")
+
+    # Optional SOP
+    if request.include_sop:
+        sop = "# AI Development SOP\n\nStandard operating procedures for AI-assisted development.\n"
+        await _add("AI_DEVELOPMENT_SOP.md", sop, "Add AI development SOP")
+
+    return RepoResult(
+        repo_url=repo_url,
+        repo_name=repo_name,
+        files_created=files_created,
+        private=request.private,
+    )

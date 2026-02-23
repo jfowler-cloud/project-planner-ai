@@ -59,13 +59,15 @@ class ProjectRequest(BaseModel):
 class ArchitectureOption(BaseModel):
     """Single architecture option"""
     name: str
-    description: str
+    description: str = ""
     stack: dict[str, str]
     pros: list[str]
     cons: list[str]
-    cost_estimate: str
-    complexity: Literal["Low", "Medium", "High"]
+    cost_estimate: str = ""
+    monthly_cost_estimate: str = ""
+    complexity: str = "Low"
     best_for: str
+    mermaid_diagram: str = ""
 
 
 class CostBreakdown(BaseModel):
@@ -101,10 +103,21 @@ class ProjectPlan(BaseModel):
 # --- Models used by the pipeline (main.py) ---
 
 class QuestionnaireInput(BaseModel):
-    """Alias for ProjectRequest used by the pipeline."""
-    basics: ProjectBasics
-    technical: TechnicalRequirements
-    preferences: TechnologyPreferences = Field(default_factory=TechnologyPreferences)
+    """Flat questionnaire input used by the pipeline and main.py."""
+    description: str = Field(..., min_length=10, max_length=2000)
+    target_users: str = Field(..., min_length=5, max_length=500)
+    timeline: str = "1 week"
+    budget: str = "<$100"
+    user_count: str = "<100"
+    uptime: str = "best-effort"
+    data_sensitivity: str = "internal"
+    needs_auth: bool = False
+    needs_realtime: bool = False
+    needs_payments: bool = False
+    backend_lang: Optional[str] = None
+    frontend_framework: Optional[str] = None
+    infra_preference: Optional[str] = None
+    force_refresh: bool = False
     review_count: int = Field(default=3, ge=1, le=10)
     user_id: Optional[str] = None
     session_id: Optional[str] = None
@@ -114,25 +127,17 @@ class ReviewFinding(BaseModel):
     """A single critical review finding from the pipeline."""
     iteration: int
     category: str
-    findings: str
-    recommendations: str
-    risk_level: Literal["Low", "Medium", "High", "Critical"] = "Medium"
+    findings: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    risk_level: str = "low"
 
 
 class PlanOutput(BaseModel):
-    """Alias for ProjectPlan used by the pipeline."""
-    project_id: str
+    """Output from the AI pipeline (old flat schema used by pipeline and tests)."""
+    plan_id: str
+    recommended: ArchitectureOption
+    alternatives: list[ArchitectureOption] = Field(default_factory=list)
+    review_findings: list["ReviewFinding"] = Field(default_factory=list)
+    cost_estimate_ai: float = 0.0
     created_at: datetime
-    basics: ProjectBasics
-    technical: TechnicalRequirements
-    preferences: TechnologyPreferences
-    architecture_options: list[ArchitectureOption]
-    recommended_option: str
-    justification: str
-    technology_stack: dict[str, str]
-    cost_breakdown: CostBreakdown
-    timeline_estimate: str
-    risk_assessment: list[str]
-    security_checklist: list[str]
     is_fallback: bool = False
-    status: Literal["planning", "reviewing", "completed", "failed"] = "planning"
