@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     # Model settings
     default_model: Literal["claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-haiku-4-20250514"] = "claude-sonnet-4-20250514"
     max_tokens: int = 4096
-    temperature: float = 1.0
+    temperature: float = 0.3
     
     # Cache
     cache_ttl: int = 3600  # 1 hour

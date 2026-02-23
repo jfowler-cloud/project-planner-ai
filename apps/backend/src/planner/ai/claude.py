@@ -81,7 +81,12 @@ class ClaudeClient:
                 )
                 
                 result = json.loads(response["body"].read())
-                return result["content"][0]["text"]
+                text = result["content"][0]["text"]
+                if not text:
+                    stop_reason = result.get("stop_reason", "unknown")
+                    logger.error(f"Bedrock returned empty text. stop_reason={stop_reason}, usage={result.get('usage')}")
+                    raise ValueError(f"Bedrock returned empty response (stop_reason={stop_reason})")
+                return text
             else:
                 # Run blocking call in thread pool
                 loop = asyncio.get_event_loop()
@@ -114,11 +119,14 @@ class ClaudeClient:
         model: str = None
     ) -> list[ArchitectureOption]:
         """Generate 3-5 architecture options based on requirements"""
-        
         model = model or self.models["planning"]
         prompt = self._build_architecture_prompt(request)
-        content = await self._call_claude(prompt, model)
-        options = self._parse_architecture_options(content)
+        try:
+            content = await self._call_claude(prompt, model)
+            options = self._parse_architecture_options(content)
+        except Exception as e:
+            logger.error(f"generate_architecture_options failed: {e}", exc_info=True)
+            options = self._get_default_options()
         return options
     
     async def perform_critical_review(
