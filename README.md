@@ -241,7 +241,7 @@ The integration passes plan data via URL query parameter, which works but loses 
 | **Purpose** | Resume optimization | Project planning | AWS architecture design | Career planning |
 | **AI** | Claude via Bedrock | Claude via Bedrock/API | Claude via Bedrock | Claude via Bedrock |
 | **Tests** | 212 (98% cov) | 99 | 126 (67% cov) | 142 (99% cov) |
-| **Build time** | 3 days | 2 weeks | 1 day | 2 hours |
+| **Build time** | 3 days | 2 days | 1 day | 2 hours |
 
 ---
 
