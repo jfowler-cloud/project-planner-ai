@@ -35,6 +35,7 @@ beforeEach(() => {
 describe("PlanningPage", () => {
   it("redirects to questionnaire when no project request in sessionStorage", () => {
     (window.sessionStorage.getItem as jest.Mock).mockReturnValue(null);
+    (global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}));
     render(<PlanningPage />);
     expect(mockPush).toHaveBeenCalledWith("/questionnaire");
   });
@@ -52,7 +53,7 @@ describe("PlanningPage", () => {
     (global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}));
 
     render(<PlanningPage />);
-    expect(screen.getByText("AI Planning in Progress")).toBeInTheDocument();
+    expect(screen.getByText(/AI Planning in Progress/)).toBeInTheDocument();
   });
 
   it("renders the progress bar", () => {
