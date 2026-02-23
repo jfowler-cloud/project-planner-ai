@@ -1,5 +1,6 @@
 import anthropic
 import json
+import logging
 import boto3
 from typing import AsyncIterator
 from ..config import settings
@@ -8,6 +9,8 @@ from datetime import datetime, timezone
 import uuid
 import asyncio
 from functools import partial
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeClient:
@@ -229,7 +232,7 @@ Be concise but thorough."""
         ])
         
         reviews_text = "\n\n".join([
-            f"{r['review_type']}:\n{r['findings'][:200]}..."
+            f"{r['review_type']}:\n{r['findings']}"
             for r in reviews
         ])
         
@@ -268,7 +271,7 @@ Format as JSON with keys: recommended_option, justification, technology_stack, c
             data = json.loads(content)
             return [ArchitectureOption(**opt) for opt in data]
         except Exception as e:
-            # Fallback to default options if parsing fails
+            logger.error("Failed to parse architecture options from AI response: %s", e, exc_info=True)
             return self._get_default_options()
     
     def _parse_final_plan(
@@ -302,8 +305,8 @@ Format as JSON with keys: recommended_option, justification, technology_stack, c
                 security_checklist=data["security_checklist"],
                 status="completed"
             )
-        except Exception:
-            # Fallback plan
+        except Exception as e:
+            logger.error("Failed to parse final plan from AI response: %s", e, exc_info=True)
             return self._get_default_plan(request, options)
     
     def _get_default_options(self) -> list[ArchitectureOption]:

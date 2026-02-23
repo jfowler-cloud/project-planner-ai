@@ -6,7 +6,7 @@
 [![Status](https://img.shields.io/badge/Status-Active%20Development-green)](https://github.com)
 
 ![Planning Phase](https://img.shields.io/badge/Phase-MVP-blue?style=flat-square)
-![Timeline](https://img.shields.io/badge/Progress-85%25-green?style=flat-square)
+![Timeline](https://img.shields.io/badge/Progress-95%25-green?style=flat-square)
 
 ---
 
@@ -15,7 +15,7 @@
 **Working Features:**
 - Interactive 3-step questionnaire with demo mode
 - Real-time AI planning with streaming progress updates (SSE)
-- Configurable review passes (1-10, default: 3)
+- Configurable review passes (1-10, default: 3) — both endpoints now respect this value
 - Selectable architecture options during planning
 - AWS Bedrock integration (Claude 3 Haiku / Claude 4 Sonnet / Claude 4 Opus)
 - 3 deployment tiers (testing/optimized/premium)
@@ -23,19 +23,18 @@
 - Scaffold AI integration (purple sidebar button)
 - Redis caching with graceful fallback (1-hour TTL)
 - Rate limiting (10 plans/hour)
-- 13 backend test files (no frontend tests yet)
+- 13 backend test files + 3 frontend test files (ErrorBoundary, Questionnaire, Planning)
+- React error boundaries on /planning and /results pages
+- Docker health checks for all services
 
 **Known Issues:**
 - Frontend needs restart to pick up backend changes
-- Non-streaming `/api/v1/plan` endpoint hardcodes 10 reviews, ignoring the configurable `review_count` parameter (see `routes.py:76`)
-- AI response parsing can silently fall back to minimal defaults without logging
 
 **Not Yet Implemented:**
 - GitHub repository generation (backend route stubbed, returns 501)
 - PDF/Markdown export (UI shows alert dialogs only)
 - DynamoDB persistence (config exists, no queries implemented)
 - User authentication
-- Frontend tests
 
 ---
 
@@ -45,53 +44,53 @@ This section provides an honest assessment of the project's current state and ac
 
 ### High Priority
 
-**1. Bug: Non-streaming endpoint ignores `review_count`**
+**1. ~~Bug: Non-streaming endpoint ignores `review_count`~~ ✅ Fixed**
 
-The `/api/v1/plan` endpoint in `apps/backend/src/planner/api/v1/routes.py:76` hardcodes `range(1, 11)` (always 10 reviews) while the streaming endpoint correctly uses `request.review_count`. This means non-streaming requests always perform 10 expensive AI calls regardless of what the user requested. Fix: replace `range(1, 11)` with `range(1, request.review_count + 1)`.
+`routes.py` now uses `range(1, request.review_count + 1)` in both the streaming and non-streaming endpoints.
 
-**2. No frontend tests**
+**2. ~~No frontend tests~~ ✅ Fixed**
 
-The backend has 13 test files, but the frontend has zero tests despite having `jest` configured in `package.json`. The questionnaire form, streaming progress UI, and results page all contain significant logic that should be tested. The CI pipeline (`ci.yml`) does not run frontend tests either - it only lints and builds.
+3 test files added covering `ErrorBoundary`, `QuestionnairePage`, and `PlanningPage`. Jest + `@testing-library/react` added to devDependencies with `jest.config.mjs`. CI pipeline now runs `npm test` before the build step.
 
-**3. Silent AI parsing failures**
+**3. ~~Silent AI parsing failures~~ ✅ Fixed**
 
-In `apps/backend/src/planner/ai/claude.py`, both `_parse_architecture_options` and `_parse_final_plan` catch all exceptions and return minimal fallback data without logging. A user could receive a single generic "Full Serverless" option with no indication that the AI response parsing failed. At minimum, add logging. Consider also returning a warning flag in the response.
+`_parse_architecture_options` and `_parse_final_plan` in `claude.py` now log the exception with `logger.error(..., exc_info=True)` before falling back to defaults.
 
-**4. No error boundaries in the frontend**
+**4. ~~No error boundaries in the frontend~~ ✅ Fixed**
 
-The React frontend has no error boundaries. If any component throws during rendering (e.g., malformed plan data from a parsing fallback), the entire page crashes with a white screen. Add React error boundaries around at least the results page and planning page.
+Next.js App Router `error.tsx` files added for `/planning` and `/results/[id]` routes. A reusable class-based `ErrorBoundary` component also added to `components/`.
 
 ### Medium Priority
 
-**5. Overly permissive CORS configuration**
+**5. ~~Overly permissive CORS configuration~~ ✅ Fixed**
 
-`routes.py` configures `allow_methods=["*"]` and `allow_headers=["*"]`. For production, restrict these to the specific methods (GET, POST, OPTIONS) and headers actually used.
+`routes.py` now restricts to `allow_methods=["GET", "POST", "OPTIONS"]` and `allow_headers=["Content-Type", "Authorization"]`.
 
 **6. Session storage is not "persistence"**
 
-The frontend uses `sessionStorage` to pass data between pages. This data is lost when the browser tab closes. The README previously claimed "Session persistence - Resume where you left off" which is misleading. True persistence requires the planned DynamoDB integration.
+The frontend uses `sessionStorage` to pass data between pages. This data is lost when the browser tab closes. True persistence requires the planned DynamoDB integration.
 
-**7. Review truncation in recommendation prompt**
+**7. ~~Review truncation in recommendation prompt~~ ✅ Fixed**
 
-In `claude.py:232`, review findings are truncated to 200 characters each (`r['findings'][:200]`) before being sent to the final recommendation prompt. After performing multiple expensive review iterations, most of the review content is discarded. This undermines the value of the review process.
+The `[:200]` slice removed from `_build_recommendation_prompt` in `claude.py`. Full review findings now reach the final recommendation AI call.
 
 **8. Cost estimates are static**
 
-The cost breakdown in the generated plans uses hardcoded fallback values and relies entirely on the AI model to generate estimates. There is no validation or calculation engine to cross-check AI-generated cost figures against actual cloud pricing.
+The cost breakdown fallback uses hardcoded values. No validation engine cross-checks AI-generated figures against actual cloud pricing.
 
 ### Low Priority
 
 **9. No rate limiting per session on the frontend**
 
-Rate limiting is only enforced server-side. The frontend doesn't track or communicate rate limit status to users before they trigger a plan generation.
+Rate limiting is enforced server-side only. The frontend doesn't communicate remaining quota to users before they trigger plan generation.
 
-**10. Docker configuration could be improved**
+**10. ~~Docker configuration could be improved~~ ✅ Fixed**
 
-The `docker-compose.yml` exists but doesn't define health checks for services. Adding health checks would improve reliability in containerized deployments.
+Health checks added for all three services in `docker-compose.yml`. Frontend now waits for a healthy backend before starting.
 
 **11. Missing API documentation tooling**
 
-FastAPI auto-generates OpenAPI docs at `/docs`, but there's no additional API documentation or examples. Consider adding request/response examples to the route docstrings.
+FastAPI auto-generates OpenAPI docs at `/docs`. Consider adding request/response examples to route docstrings for richer documentation.
 
 ---
 
@@ -490,8 +489,13 @@ CORS_ORIGINS=["http://localhost:3000"]
 - [x] Results page (4 tabs: overview, architecture, costs, security)
 - [x] Scaffold AI integration
 - [x] Deployment configurations (testing/optimized/premium)
-- [ ] Fix: non-streaming endpoint review_count bug
-- [ ] Frontend tests (Jest configured but no tests written)
+- [x] Fix: non-streaming endpoint review_count bug
+- [x] Frontend tests (3 test files: ErrorBoundary, Questionnaire, Planning)
+- [x] Error boundaries in frontend (/planning and /results routes)
+- [x] CORS restricted to specific methods and headers
+- [x] AI parsing failures now logged with full stack trace
+- [x] Review truncation removed (full findings passed to recommendation)
+- [x] Docker health checks for all services
 - [ ] GitHub repository generator (frontend integration)
 - [ ] Export as PDF
 - [ ] Export as Markdown
@@ -503,7 +507,6 @@ CORS_ORIGINS=["http://localhost:3000"]
 - [ ] Team collaboration
 - [ ] Custom templates
 - [ ] Advanced cost modeling
-- [ ] Error boundaries in frontend
 
 ### Phase 3: Advanced Features (Weeks 5-6)
 - [ ] Multi-cloud support (Azure, GCP)
@@ -588,6 +591,6 @@ The SOP enables rapid development of production-quality applications with securi
 
 ---
 
-**Status:** Phase 1 MVP ~85% Complete
-**Next Milestone:** Fix review_count bug, add frontend tests, complete persistence layer
+**Status:** Phase 1 MVP ~95% Complete
+**Next Milestone:** DynamoDB persistence, PDF/Markdown export, GitHub repository generation
 **Integration:** Seamless handoff to Scaffold AI for code generation
