@@ -1,11 +1,8 @@
 name: Deploy
 
+# Disabled — deployment infrastructure not yet configured
 on:
-  push:
-    branches:
-      - main
-      - develop
-      - testing
+  workflow_dispatch:
 
 jobs:
   deploy:
