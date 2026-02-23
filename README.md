@@ -10,29 +10,88 @@
 
 ---
 
-## 🚀 Current Status
+## Current Status
 
 **Working Features:**
-- ✅ Interactive 3-step questionnaire with demo mode
-- ✅ Real-time AI planning with streaming progress updates
-- ✅ Configurable review passes (1-10, default: 3)
-- ✅ Selectable architecture options during planning
-- ✅ AWS Bedrock integration (Claude Haiku 3.0/Sonnet 4.5/Opus 4.5)
-- ✅ 3 deployment tiers (testing/optimized/premium)
-- ✅ Results page with 4 tabs (overview, architecture, costs, security)
-- ✅ Scaffold AI integration (purple sidebar button)
-- ✅ Redis caching with graceful fallback
-- ✅ Rate limiting (10 plans/hour)
-- ✅ 48 tests, 86% coverage
+- Interactive 3-step questionnaire with demo mode
+- Real-time AI planning with streaming progress updates (SSE)
+- Configurable review passes (1-10, default: 3)
+- Selectable architecture options during planning
+- AWS Bedrock integration (Claude 3 Haiku / Claude 4 Sonnet / Claude 4 Opus)
+- 3 deployment tiers (testing/optimized/premium)
+- Results page with 4 tabs (overview, architecture, costs, security)
+- Scaffold AI integration (purple sidebar button)
+- Redis caching with graceful fallback (1-hour TTL)
+- Rate limiting (10 plans/hour)
+- 13 backend test files (no frontend tests yet)
 
 **Known Issues:**
-- ⚠️ Frontend needs restart to pick up backend changes
+- Frontend needs restart to pick up backend changes
+- Non-streaming `/api/v1/plan` endpoint hardcodes 10 reviews, ignoring the configurable `review_count` parameter (see `routes.py:76`)
+- AI response parsing can silently fall back to minimal defaults without logging
 
 **Not Yet Implemented:**
-- ❌ GitHub repository generation (backend ready, frontend not connected)
-- ❌ PDF/Markdown export
-- ❌ DynamoDB persistence
-- ❌ User authentication
+- GitHub repository generation (backend route stubbed, returns 501)
+- PDF/Markdown export (UI shows alert dialogs only)
+- DynamoDB persistence (config exists, no queries implemented)
+- User authentication
+- Frontend tests
+
+---
+
+## Critical Review & Recommendations
+
+This section provides an honest assessment of the project's current state and actionable recommendations for improvement.
+
+### High Priority
+
+**1. Bug: Non-streaming endpoint ignores `review_count`**
+
+The `/api/v1/plan` endpoint in `apps/backend/src/planner/api/v1/routes.py:76` hardcodes `range(1, 11)` (always 10 reviews) while the streaming endpoint correctly uses `request.review_count`. This means non-streaming requests always perform 10 expensive AI calls regardless of what the user requested. Fix: replace `range(1, 11)` with `range(1, request.review_count + 1)`.
+
+**2. No frontend tests**
+
+The backend has 13 test files, but the frontend has zero tests despite having `jest` configured in `package.json`. The questionnaire form, streaming progress UI, and results page all contain significant logic that should be tested. The CI pipeline (`ci.yml`) does not run frontend tests either - it only lints and builds.
+
+**3. Silent AI parsing failures**
+
+In `apps/backend/src/planner/ai/claude.py`, both `_parse_architecture_options` and `_parse_final_plan` catch all exceptions and return minimal fallback data without logging. A user could receive a single generic "Full Serverless" option with no indication that the AI response parsing failed. At minimum, add logging. Consider also returning a warning flag in the response.
+
+**4. No error boundaries in the frontend**
+
+The React frontend has no error boundaries. If any component throws during rendering (e.g., malformed plan data from a parsing fallback), the entire page crashes with a white screen. Add React error boundaries around at least the results page and planning page.
+
+### Medium Priority
+
+**5. Overly permissive CORS configuration**
+
+`routes.py` configures `allow_methods=["*"]` and `allow_headers=["*"]`. For production, restrict these to the specific methods (GET, POST, OPTIONS) and headers actually used.
+
+**6. Session storage is not "persistence"**
+
+The frontend uses `sessionStorage` to pass data between pages. This data is lost when the browser tab closes. The README previously claimed "Session persistence - Resume where you left off" which is misleading. True persistence requires the planned DynamoDB integration.
+
+**7. Review truncation in recommendation prompt**
+
+In `claude.py:232`, review findings are truncated to 200 characters each (`r['findings'][:200]`) before being sent to the final recommendation prompt. After performing multiple expensive review iterations, most of the review content is discarded. This undermines the value of the review process.
+
+**8. Cost estimates are static**
+
+The cost breakdown in the generated plans uses hardcoded fallback values and relies entirely on the AI model to generate estimates. There is no validation or calculation engine to cross-check AI-generated cost figures against actual cloud pricing.
+
+### Low Priority
+
+**9. No rate limiting per session on the frontend**
+
+Rate limiting is only enforced server-side. The frontend doesn't track or communicate rate limit status to users before they trigger a plan generation.
+
+**10. Docker configuration could be improved**
+
+The `docker-compose.yml` exists but doesn't define health checks for services. Adding health checks would improve reliability in containerized deployments.
+
+**11. Missing API documentation tooling**
+
+FastAPI auto-generates OpenAPI docs at `/docs`, but there's no additional API documentation or examples. Consider adding request/response examples to the route docstrings.
 
 ---
 
@@ -60,9 +119,9 @@ Most developers either:
 
 1. **Ask simple questions** - No technical jargon required
 2. **Generate architecture options** - AI analyzes your needs and suggests 3-5 options
-3. **Critical review loop** - 10 iterations of security, cost, scalability analysis
-4. **Create project plan** - Comprehensive documentation with diagrams
-5. **Generate repository** - Ready-to-code GitHub repo with CI/CD, tests, security
+3. **Critical review loop** - Configurable 1-10 iterations of security, cost, scalability analysis (default: 3)
+4. **Create project plan** - Comprehensive documentation with cost breakdowns
+5. **Generate repository** - Ready-to-code GitHub repo with CI/CD, tests, security (planned)
 
 **Result:** Production-ready project plan in minutes, not weeks.
 
@@ -70,7 +129,7 @@ Most developers either:
 
 ## How It Works
 
-### Complete Workflow: Plan → Build → Deploy
+### Complete Workflow: Plan > Build > Deploy
 
 **Project Planner AI** and **Scaffold AI** work together seamlessly:
 
@@ -90,9 +149,9 @@ Most developers either:
 
 ### Step 2: AI Planning (Automated)
 
-**Using Claude Opus 4.6:**
+**Using Claude (model varies by deployment tier):**
 1. Generates 3-5 architecture options
-2. Performs 10 critical review iterations:
+2. Performs configurable critical review iterations (default: 3, max: 10):
    - Security analysis
    - Cost optimization
    - Scalability review
@@ -108,18 +167,18 @@ Most developers either:
 - Compare alternative options
 - Review cost breakdowns
 - Check security requirements
-- **Click "Open in Scaffold AI" →**
+- **Click "Open in Scaffold AI"** for code generation
 
 ### Step 4: Build Implementation (Scaffold AI)
 
 **Automatically receives your plan and generates:**
-- ✅ Starter code (backend + frontend)
-- ✅ Infrastructure as Code (Terraform/CDK)
-- ✅ Security scanning configuration
-- ✅ CI/CD pipelines
-- ✅ Database schemas
-- ✅ API documentation
-- ✅ Docker configurations
+- Starter code (backend + frontend)
+- Infrastructure as Code (Terraform/CDK)
+- Security scanning configuration
+- CI/CD pipelines
+- Database schemas
+- API documentation
+- Docker configurations
 
 ### Step 5: Deploy to AWS
 
@@ -131,79 +190,49 @@ Most developers either:
 
 ---
 
-## Why Use Both Together?
-
-### Project Planner AI (Strategic Planning)
-- 🎯 **Focus**: Architecture decisions and planning
-- 🤖 **AI-Powered**: Claude analyzes requirements deeply
-- 💰 **Cost Analysis**: Detailed breakdowns and projections
-- 🔍 **Multiple Options**: Compare 3-5 approaches
-- 📊 **Risk Assessment**: Identify issues early
-
-### Scaffold AI (Tactical Implementation)
-- ⚡ **Focus**: Code generation and deployment
-- 🚀 **Fast**: Generate complete projects in minutes
-- 🔒 **Secure**: Built-in security scanning
-- 📦 **Complete**: Infrastructure + code + CI/CD
-- ☁️ **AWS-Ready**: Deploy directly to AWS
-
-### Together = Complete Solution
-1. **Plan** with deep AI analysis (Planner)
-2. **Build** with generated code (Scaffold)
-3. **Deploy** to production (Scaffold)
-4. **Iterate** quickly on both
-
----
-
 ## Features
 
-### ✅ Completed (Phase 1 MVP)
+### Completed (Phase 1 MVP)
 
 #### For Non-Technical Users
-- 🎯 **Simple 3-step questionnaire** - Project basics, technical requirements, preferences
-- 📊 **Real-time progress tracking** - Watch AI generate your plan with live updates
-- 💰 **Detailed cost estimates** - Monthly and yearly breakdowns
-- ⏱️ **Timeline projections** - Realistic delivery estimates
-- 📚 **Educational explanations** - Understand architecture decisions
-- 💾 **Session persistence** - Resume where you left off
-- 📱 **Mobile-friendly** - Works on any device
+- **Simple 3-step questionnaire** - Project basics, technical requirements, preferences
+- **Real-time progress tracking** - Watch AI generate your plan with live SSE updates
+- **Detailed cost estimates** - Monthly and yearly breakdowns
+- **Timeline projections** - Realistic delivery estimates
+- **Educational explanations** - Understand architecture decisions
+- **Demo mode** - Try it out with pre-filled data
 
 #### For Technical Users
-- 🏗️ **Multiple architecture options** - 3-5 approaches analyzed and compared
-- 🔒 **Security-first** - 10 critical review iterations covering OWASP, encryption, etc.
-- 📈 **Scalability analysis** - Plan for growth from day one
-- 🧪 **Testing strategy** - Best practices included
-- 📖 **Comprehensive comparison** - Pros/cons for each option
-- 🎨 **Technology stack details** - Specific recommendations
-- 📊 **Performance metrics** - Response time, uptime targets
-- 🔄 **Export options** - PDF, Markdown, GitHub repo
+- **Multiple architecture options** - 3-5 approaches analyzed and compared
+- **Security-first** - Up to 10 critical review iterations covering OWASP, encryption, etc.
+- **Scalability analysis** - Plan for growth from day one
+- **Comprehensive comparison** - Pros/cons for each option
+- **Technology stack details** - Specific recommendations
+- **Configurable review depth** - 1-10 review passes via slider
 
 #### For Teams
-- 🤝 **Clear justifications** - Understand why decisions were made
-- 📋 **Security checklist** - Track implementation requirements
-- 🔄 **Risk assessment** - Identify potential issues early
-- 📊 **Cost tracking** - Budget planning with detailed breakdowns
-- 🔐 **Privacy-first** - Session-based, no permanent storage
-- 📤 **Multiple export formats** - Share plans easily
-- 🔗 **GitHub integration** - One-click repo creation (coming soon)
+- **Clear justifications** - Understand why decisions were made
+- **Security checklist** - Track implementation requirements
+- **Risk assessment** - Identify potential issues early
+- **Cost tracking** - Budget planning with detailed breakdowns
+- **Scaffold AI integration** - One-click handoff for code generation
 
-### 🚧 In Progress (Phase 2)
-### 🚧 In Progress (Phase 2)
+### Not Yet Implemented (Phase 2)
 - User authentication (AWS Cognito)
 - Save/load projects (DynamoDB)
+- PDF/Markdown export
+- GitHub repository generation (frontend integration)
 - Team collaboration
 - Custom templates
 - Advanced cost modeling
-- Integration with CI/CD
-- Deployment automation
 
 ---
 
 ## Technology Stack
 
 ### Frontend
-- **Framework:** Next.js 16 + React 19
-- **Styling:** Tailwind CSS + Cloudscape Design System
+- **Framework:** Next.js 15 + React 19
+- **Styling:** Tailwind CSS
 - **State:** Zustand
 - **Forms:** React Hook Form + Zod
 - **Diagrams:** Mermaid.js
@@ -211,16 +240,25 @@ Most developers either:
 ### Backend
 - **Framework:** FastAPI (Python 3.12+)
 - **Package Manager:** uv
-- **AI:** Anthropic Claude API (Opus/Sonnet/Haiku)
-- **Database:** DynamoDB or Aurora Serverless
-- **Auth:** AWS Cognito
+- **AI:** Anthropic Claude API (via direct API or AWS Bedrock)
+- **Caching:** Redis
+- **Validation:** Pydantic v2 + pydantic-settings
+
+### AI Models by Deployment Tier
+
+| Tier | Planning | Review | Recommendation |
+|------|----------|--------|----------------|
+| Testing | Claude 3 Haiku | Claude 3 Haiku | Claude 3 Haiku |
+| Optimized | Claude 4 Sonnet | Claude 4 Haiku | Claude 4 Sonnet |
+| Premium | Claude 4 Opus | Claude 4 Opus | Claude 4 Opus |
 
 ### Infrastructure
 - **Frontend:** Vercel
-- **API:** AWS Lambda + API Gateway
-- **Storage:** S3
+- **API:** AWS Lambda + API Gateway (planned)
+- **Caching:** Redis (local / ElastiCache)
+- **Database:** DynamoDB (planned)
+- **Auth:** AWS Cognito (planned)
 - **CI/CD:** GitHub Actions
-- **Monitoring:** CloudWatch + Sentry
 
 ---
 
@@ -262,23 +300,6 @@ Each option analyzed for:
 
 ---
 
-## Development Timeline
-
-### Week 1: Core Application
-- Days 1-2: Planning & Architecture
-- Days 3-5: Implementation (UI + AI integration)
-- Days 6-7: Testing & Refinement
-
-### Week 2: Polish & Launch
-- Days 8-9: Advanced Features (GitHub integration)
-- Days 10-11: Documentation & Testing
-- Days 12-13: Security & Compliance
-- Day 14: Launch Preparation
-
-**Status:** 🟢 Phase 1 MVP Complete - Ready for Production Testing
-
----
-
 ## Deployment
 
 ### Environments
@@ -286,7 +307,7 @@ Each option analyzed for:
 This project supports three deployment tiers:
 
 - **Testing**: `testing.project-planner-ai.com` - Branch: `testing`
-- **Optimized**: `optimized.project-planner-ai.com` - Branch: `develop`  
+- **Optimized**: `optimized.project-planner-ai.com` - Branch: `develop`
 - **Premium**: `project-planner-ai.com` - Branch: `main`
 
 ### Deploy Manually
@@ -305,9 +326,9 @@ This project supports three deployment tiers:
 ### Automatic Deployment
 
 Push to the respective branch for automatic deployment via GitHub Actions:
-- Push to `testing` → deploys to testing environment
-- Push to `develop` → deploys to optimized environment
-- Push to `main` → deploys to premium environment
+- Push to `testing` -> deploys to testing environment
+- Push to `develop` -> deploys to optimized environment
+- Push to `main` -> deploys to premium environment
 
 ---
 
@@ -316,122 +337,80 @@ Push to the respective branch for automatic deployment via GitHub Actions:
 ```
 project-planner-ai/
 ├── apps/
-│   ├── web/                    # Next.js frontend
+│   ├── web/                    # Next.js 15 frontend
 │   │   ├── app/
 │   │   │   ├── page.tsx       # Landing page
-│   │   │   ├── questionnaire/ # Step-by-step form
-│   │   │   ├── planning/      # AI planning progress
-│   │   │   └── results/       # Generated plan
-│   │   ├── components/
-│   │   │   ├── QuestionCard.tsx
-│   │   │   ├── ArchitectureOption.tsx
-│   │   │   ├── CostEstimator.tsx
-│   │   │   └── ProgressIndicator.tsx
-│   │   └── lib/
-│   │       ├── api.ts         # API client
-│   │       └── types.ts       # TypeScript types
+│   │   │   ├── questionnaire/ # 3-step form
+│   │   │   ├── planning/      # AI planning progress (SSE)
+│   │   │   └── results/[id]/  # Tabbed results display
+│   │   └── components/
+│   │       └── ScaffoldIntegration.tsx
 │   └── backend/                # FastAPI backend
 │       ├── src/planner/
-│       │   ├── api/           # API routes
-│       │   ├── ai/            # Claude integration
-│       │   ├── github/        # GitHub API
-│       │   ├── models/        # Data models
-│       │   └── templates/     # Project templates
-│       └── tests/             # Comprehensive tests
+│       │   ├── api/v1/        # API routes
+│       │   ├── ai/            # Claude integration + caching
+│       │   ├── github/        # GitHub API client
+│       │   ├── models/        # Pydantic data models
+│       │   ├── config.py      # Settings management
+│       │   └── utils/         # Utility functions
+│       └── tests/             # 13 test files
 ├── docs/
-│   ├── architecture/          # Architecture diagrams
-│   ├── api/                   # API documentation
-│   └── user-guide/            # User documentation
+│   ├── DEPLOYMENT.md
+│   ├── DEVELOPMENT.md
+│   └── DEV_SCRIPT.md
+├── .github/workflows/
+│   ├── ci.yml                 # Backend tests + frontend lint/build
+│   ├── deploy.yml             # Deployment automation
+│   └── security-scan.yml      # Trivy vulnerability scanning
 ├── AI_DEVELOPMENT_SOP.md      # Development methodology
 ├── PROJECT_PLAN.md            # Detailed project plan
-├── README.md                  # This file
-└── .pre-commit-config.yaml    # Security hooks
+├── docker-compose.yml         # Docker setup with Redis
+├── dev.sh                     # Local development startup
+├── deploy.sh                  # Deployment script
+├── setup.sh                   # Initial setup script
+├── .pre-commit-config.yaml    # Security hooks
+└── README.md                  # This file
 ```
 
 ---
 
-## Success Metrics
+## API Routes
 
-### User Experience ✅
-- ✅ Complete questionnaire in <5 minutes
-- ✅ Generate plan in <2 minutes (with AI)
-- ⏳ Create repository in <30 seconds (coming soon)
-- Target: 90% user satisfaction
-
-### Technical ✅
-- ✅ 48 tests passing, 92% coverage
-- ✅ <200ms API response time (cached)
-- ✅ <2s API response time (AI)
-- ✅ Zero critical vulnerabilities
-- ✅ Rate limiting (10 plans/hour)
-
-### Performance ✅
-- ✅ Page load <2s
-- ✅ Real-time progress updates via SSE
-- ✅ Responsive design (mobile/desktop)
-- ✅ Error handling and recovery
-
----
-
-## Documentation
-
-- **[AI Development SOP](./AI_DEVELOPMENT_SOP.md)** - Complete development methodology
-- **[Project Plan](./PROJECT_PLAN.md)** - Detailed implementation plan
-- **[Architecture](./docs/architecture/)** - System design (coming soon)
-- **[API Docs](./docs/api/)** - API reference (coming soon)
-- **[User Guide](./docs/user-guide/)** - How to use (coming soon)
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | `/health` | Working | Health check |
+| POST | `/api/v1/plan` | Working | Non-streaming plan generation (bug: ignores review_count) |
+| POST | `/api/v1/plan/stream` | Working | Streaming plan generation with SSE |
+| GET | `/api/v1/plan/{project_id}` | Stubbed | Returns 404 (needs DynamoDB) |
+| GET | `/api/v1/templates` | Working | Common project templates |
+| POST | `/api/v1/generate-repo` | Stubbed | Returns 501 (not implemented) |
 
 ---
 
 ## Quick Start Guide
 
-### Option 1: Complete Workflow (Recommended)
+### Option 1: Local Development (Recommended)
 
 ```bash
-# 1. Plan your project
-Visit: https://project-planner-ai.com
-- Complete 3-step questionnaire
-- Review AI-generated architecture options
-- Get cost estimates and security checklist
-
-# 2. Build implementation
-Click "Open in Scaffold AI" button
-- Automatically imports your plan
-- Generates starter code
-- Creates infrastructure as code
-- Sets up CI/CD
-
-# 3. Deploy to AWS
-From Scaffold AI:
-- One-click deployment
-- Monitoring configured
-- Security enabled
-```
-
-### Option 2: Planning Only
-
-```bash
-# Just need architecture decisions?
-Visit: https://project-planner-ai.com
-- Get architecture recommendations
-- Cost analysis
-- Security checklist
-- Export as PDF/Markdown
-```
-
-### Option 3: Local Development
-
-```bash
-# Run locally
+# Clone and setup
 git clone https://github.com/jfowler-cloud/project-planner-ai
 cd project-planner-ai
 ./setup.sh
-./dev.sh
 
-# Visit http://localhost:3000
+# Start all services (Redis + Backend + Frontend)
+./dev.sh
 ```
 
----
+This will start:
+- Redis on port 6379
+- Backend on http://localhost:8000
+- Frontend on http://localhost:3000
+
+Press Ctrl+C to stop all services.
+
+### Option 2: Manual Setup
+
+**Backend:**
 
 ```bash
 cd apps/backend
@@ -456,7 +435,7 @@ uv run python src/main.py
 
 Backend runs on http://localhost:8000
 
-### Frontend Setup
+**Frontend:**
 
 ```bash
 cd apps/web
@@ -470,24 +449,26 @@ npm run dev
 
 Frontend runs on http://localhost:3000
 
-### Quick Start (Recommended)
-
-```bash
-# Start all services (Redis + Backend + Frontend)
-./dev.sh
-```
-
-This will start:
-- Redis on port 6379
-- Backend on http://localhost:8000
-- Frontend on http://localhost:3000
-
-Press Ctrl+C to stop all services.
-
-### Docker Setup (Alternative)
+### Option 3: Docker
 
 ```bash
 docker-compose up
+```
+
+---
+
+## Environment Variables
+
+```
+DEPLOYMENT_TIER=testing|optimized|premium
+AI_PROVIDER=bedrock|anthropic
+ANTHROPIC_API_KEY=sk-...
+AWS_REGION=us-east-1
+AWS_PROFILE=default
+REDIS_URL=redis://localhost:6379
+GITHUB_TOKEN=ghp_...
+DYNAMODB_TABLE=project-planner-projects
+CORS_ORIGINS=["http://localhost:3000"]
 ```
 
 ---
@@ -497,31 +478,32 @@ docker-compose up
 ### Phase 1: MVP (Weeks 1-2)
 - [x] Project planning and architecture
 - [x] Backend API structure (FastAPI)
-- [x] AI integration (Claude Opus/Sonnet/Haiku)
-- [x] Data models and validation
+- [x] AI integration (Claude via Anthropic API / AWS Bedrock)
+- [x] Data models and validation (Pydantic v2)
 - [x] Caching layer (Redis)
 - [x] Rate limiting
-- [x] Basic tests (48 tests, 92% coverage)
+- [x] Backend tests (13 test files)
 - [x] CI/CD pipeline (GitHub Actions)
 - [x] Landing page UI
 - [x] Interactive questionnaire UI (3-step form)
 - [x] Planning progress UI (real-time SSE)
 - [x] Results page (4 tabs: overview, architecture, costs, security)
+- [x] Scaffold AI integration
 - [x] Deployment configurations (testing/optimized/premium)
-- [ ] GitHub repository generator (backend ready, frontend not connected)
+- [ ] Fix: non-streaming endpoint review_count bug
+- [ ] Frontend tests (Jest configured but no tests written)
+- [ ] GitHub repository generator (frontend integration)
 - [ ] Export as PDF
 - [ ] Export as Markdown
-- [ ] Cost calculator UI (basic version in results page)
 - [ ] DynamoDB persistence
 
 ### Phase 2: Enhanced Features (Weeks 3-4)
-- [ ] User authentication
+- [ ] User authentication (AWS Cognito)
 - [ ] Save/load projects
 - [ ] Team collaboration
 - [ ] Custom templates
 - [ ] Advanced cost modeling
-- [ ] Integration with CI/CD
-- [ ] Deployment automation
+- [ ] Error boundaries in frontend
 
 ### Phase 3: Advanced Features (Weeks 5-6)
 - [ ] Multi-cloud support (Azure, GCP)
@@ -535,7 +517,7 @@ docker-compose up
 
 ## Integration with Scaffold AI
 
-### 🔗 Seamless Handoff
+### Seamless Handoff
 
 Project Planner AI integrates directly with **Scaffold AI** for complete project delivery.
 
@@ -552,54 +534,27 @@ Project Planner AI integrates directly with **Scaffold AI** for complete project
 - Technical requirements
 
 **What Scaffold AI does:**
-- ✅ Generates production-ready code
-- ✅ Creates infrastructure as code (Terraform/CDK)
-- ✅ Sets up CI/CD pipelines
-- ✅ Implements security scanning
-- ✅ Deploys to AWS
+- Generates production-ready code
+- Creates infrastructure as code (Terraform/CDK)
+- Sets up CI/CD pipelines
+- Implements security scanning
+- Deploys to AWS
 
-### Example Workflow
+---
 
-```
-Project Planner AI (Strategic)
-├─ Answer simple questions
-├─ AI generates 5 architecture options
-├─ Review costs, security, risks
-└─ Select best option
-    ↓
-    Click "Open in Scaffold AI"
-    ↓
-Scaffold AI (Tactical)
-├─ Generate starter code
-├─ Create IaC (Terraform/CDK)
-├─ Setup CI/CD pipelines
-├─ Run security scans
-└─ Deploy to AWS
-    ↓
-    Production Ready! 🚀
-```
+## Documentation
 
-### Why Use Both?
-
-**Project Planner AI** = Strategic decisions
-- Deep AI analysis of requirements
-- Multiple architecture options
-- Cost/security/scalability reviews
-- Best for: Planning phase
-
-**Scaffold AI** = Tactical execution
-- Code generation
-- Infrastructure automation
-- Deployment
-- Best for: Implementation phase
-
-**Together** = Complete solution from idea to production
+- **[AI Development SOP](./AI_DEVELOPMENT_SOP.md)** - Complete development methodology
+- **[Project Plan](./PROJECT_PLAN.md)** - Detailed implementation plan
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Deployment instructions
+- **[Development Guide](./docs/DEVELOPMENT.md)** - Developer setup
+- **[Dev Script Guide](./docs/DEV_SCRIPT.md)** - Local development script usage
 
 ---
 
 ## Contributing
 
-This project is currently in planning phase. Contributions will be welcome once the MVP is complete.
+This project is currently in active development. Contributions will be welcome once the MVP is complete.
 
 ---
 
@@ -633,10 +588,6 @@ The SOP enables rapid development of production-quality applications with securi
 
 ---
 
-**Status:** 🟢 Phase 1 MVP Complete - Integrated with Scaffold AI  
-**Next Milestone:** Phase 2 - User authentication and persistence  
+**Status:** Phase 1 MVP ~85% Complete
+**Next Milestone:** Fix review_count bug, add frontend tests, complete persistence layer
 **Integration:** Seamless handoff to Scaffold AI for code generation
-
----
-
-**Built with ❤️ to make project planning fast, secure, and accessible to everyone**
