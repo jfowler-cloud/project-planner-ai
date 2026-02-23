@@ -31,8 +31,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 claude_client = ClaudeClient()
@@ -73,7 +73,7 @@ async def create_plan(request: ProjectRequest) -> ProjectPlan:
     
     # Perform critical reviews
     reviews = []
-    for i in range(1, 11):
+    for i in range(1, request.review_count + 1):
         review = await claude_client.perform_critical_review(request, options, i)
         reviews.append(review)
     
