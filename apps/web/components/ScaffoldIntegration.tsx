@@ -10,7 +10,7 @@ interface ScaffoldIntegrationProps {
 export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegrationProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleExportToScaffold = () => {
+  const handleExportToScaffold = async () => {
     if (projectPlan) {
       console.log("ScaffoldIntegration: Preparing data for Scaffold AI");
       
@@ -27,8 +27,48 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
         }
       }
       
-      // Create a simple prompt with the essential information
-      const prompt = `I have a project plan from Project Planner AI:
+      // Prepare structured data for API
+      const planData = {
+        plan_id: projectPlan.plan_id || `plan-${Date.now()}`,
+        project_name: projectPlan.basics.name,
+        description: projectPlan.basics.description,
+        architecture: selectedArchitecture,
+        tech_stack: selectedStack,
+        requirements: {
+          users: projectPlan.technical.user_count,
+          uptime: projectPlan.technical.uptime,
+          data_size: projectPlan.technical.data_size,
+        },
+        full_plan: projectPlan,
+      };
+      
+      try {
+        // Send to Scaffold AI backend
+        const scaffoldBackendUrl = process.env.NEXT_PUBLIC_SCAFFOLD_BACKEND_URL || "http://localhost:8001";
+        const response = await fetch(`${scaffoldBackendUrl}/api/import/plan`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(planData),
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to send plan to Scaffold AI");
+        }
+        
+        const result = await response.json();
+        
+        // Open Scaffold AI with session ID
+        const scaffoldUrl = process.env.NEXT_PUBLIC_SCAFFOLD_URL || "http://localhost:3001";
+        window.open(`${scaffoldUrl}?from=planner&session=${result.session_id}`, "_blank");
+        
+        alert('Plan sent to Scaffold AI successfully!');
+      } catch (error) {
+        console.error("Error sending plan to Scaffold AI:", error);
+        
+        // Fallback to old method if API fails
+        const prompt = `I have a project plan from Project Planner AI:
 
 Project: ${projectPlan.basics.name}
 Description: ${projectPlan.basics.description}
@@ -37,20 +77,14 @@ Tech Stack: ${Object.entries(selectedStack).map(([k, v]) => `${k}: ${v}`).join("
 Requirements: ${projectPlan.technical.user_count} users, ${projectPlan.technical.uptime} uptime
 
 Please help me build this architecture on AWS.`;
-      
-      // Encode just the prompt (much shorter)
-      const encodedPrompt = encodeURIComponent(prompt);
-      
-      // Also copy description to clipboard for easy pasting
-      navigator.clipboard.writeText(prompt).then(() => {
-        alert('Project description copied to clipboard! It will also auto-fill in Scaffold AI.');
-      }).catch(() => {
-        alert('Data saved for Scaffold AI!');
-      });
-      
-      // Open Scaffold AI (use env var for local testing, fallback to production)
-      const scaffoldUrl = process.env.NEXT_PUBLIC_SCAFFOLD_URL || "https://scaffold-ai.com";
-      window.open(`${scaffoldUrl}?from=planner&prompt=${encodedPrompt}`, "_blank");
+        
+        const encodedPrompt = encodeURIComponent(prompt);
+        const scaffoldUrl = process.env.NEXT_PUBLIC_SCAFFOLD_URL || "http://localhost:3001";
+        window.open(`${scaffoldUrl}?from=planner&prompt=${encodedPrompt}`, "_blank");
+        
+        alert('Using fallback method. Plan data copied to clipboard!');
+        navigator.clipboard.writeText(prompt).catch(() => {});
+      }
     }
   };
 

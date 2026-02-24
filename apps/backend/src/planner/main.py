@@ -113,17 +113,34 @@ async def generate_plan(request: Request, body: QuestionnaireInput):
 
     async def stream_with_cache():
         final_plan = None
-        async for event in run_pipeline(body):
-            yield event
-            # Capture the final event to cache
-            import json as _json
-            data = _json.loads(event.removeprefix("data: ").strip())
-            if data.get("done") and not data.get("error"):
-                final_plan = data.get("partial")
+        try:
+            async for event in run_pipeline(body):
+                yield event
+                # Capture the final event to cache
+                import json as _json
+                try:
+                    data = _json.loads(event.removeprefix("data: ").strip())
+                    if data.get("done") and not data.get("error"):
+                        final_plan = data.get("partial")
+                except Exception:
+                    pass  # Ignore JSON parsing errors in events
 
-        if final_plan and not body.force_refresh:
-            cache_key = make_cache_key(body.model_dump())
-            response_cache.set(cache_key, final_plan)
+            if final_plan and not body.force_refresh:
+                cache_key = make_cache_key(body.model_dump())
+                response_cache.set(cache_key, final_plan)
+        except Exception as e:
+            logger.exception("Pipeline error")
+            # Send error event to close stream gracefully
+            import json as _json
+            error_event = {
+                "step": 1,
+                "total": 1,
+                "message": f"Pipeline error: {str(e)}",
+                "partial": None,
+                "done": True,
+                "error": True
+            }
+            yield f"data: {_json.dumps(error_event)}\n\n"
 
     return StreamingResponse(stream_with_cache(), media_type="text/event-stream")
 
