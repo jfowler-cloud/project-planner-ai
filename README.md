@@ -15,6 +15,26 @@ Describe your project in plain language — Project Planner AI generates archite
 
 ---
 
+## Screenshots
+
+| Landing Page | Questionnaire (Part 1) |
+|:---:|:---:|
+| ![Landing Page](docs/images/landing_page.png) | ![Questionnaire Part 1](docs/images/project_planner_part_1.png) |
+
+| Questionnaire (Part 2) | Questionnaire (Part 3) |
+|:---:|:---:|
+| ![Questionnaire Part 2](docs/images/project_planner_part_2.png) | ![Questionnaire Part 3](docs/images/project_planner_part_3.png) |
+
+| Planning in Progress | Results Page |
+|:---:|:---:|
+| ![Planning in Progress](docs/images/planning_in_progress.png) | ![Results](docs/images/results.png) |
+
+| Scaffold AI Integration |
+|:---:|
+| ![Scaffold AI Integration](docs/images/scaffold_ai_integration.png) |
+
+---
+
 ## How It Works
 
 ```
