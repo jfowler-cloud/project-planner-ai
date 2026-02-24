@@ -1,7 +1,8 @@
 """Configuration constants."""
 
 # AWS Bedrock model
-MODEL_ID = "us.anthropic.claude-3-opus-20240229-v1:0"
+# Updated to Claude 3.5 Sonnet (current as of Feb 2026)
+MODEL_ID = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
 MAX_TOKENS = 4096
 TEMPERATURE = 0.3
 
