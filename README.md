@@ -38,16 +38,29 @@ Progress streams in real-time via SSE so you can watch the AI work.
 - Real-time AI planning with streaming progress (SSE)
 - Configurable review passes (1-10, default: 3)
 - Selectable architecture options during planning
-- AWS Bedrock integration (Claude 3 Haiku / Claude 4 Sonnet / Claude 4 Opus)
+- AWS Bedrock integration (Claude 3.5 Sonnet)
 - 3 deployment tiers (testing / optimized / premium)
 - Results page with 4 tabs (overview, architecture, costs, security)
-- Scaffold AI integration (one-click handoff via purple sidebar button)
+- **Scaffold AI integration** - Structured API handoff with session-based storage
+- **Shared types package** - Type-safe integration between projects
 - GitHub repository generation from completed plans (via X-GitHub-Token header)
 - Redis caching with graceful fallback (1-hour TTL)
 - Rate limiting (10 plans/hour) with in-memory fallback
 - React error boundaries on /planning and /results pages
 - Docker health checks for all services
-- 99 backend tests + 3 frontend tests
+- 93 backend tests + 3 frontend tests
+
+### Integration with Scaffold AI
+
+Project Planner AI seamlessly integrates with [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) for code generation:
+
+- **One-click handoff** - Purple sidebar button sends plan data via REST API
+- **Structured data transfer** - JSON-based with session IDs (no URL length limits)
+- **Type-safe** - Shared TypeScript types ensure data consistency
+- **Backward compatible** - Falls back to URL parameters if API unavailable
+- **Session persistence** - Plans stored for retrieval (in-memory, Redis-ready)
+
+See [INTEGRATION.md](INTEGRATION.md) for complete integration documentation.
 
 ### Not Yet Implemented
 - PDF/Markdown export (UI shows alert dialogs only)
