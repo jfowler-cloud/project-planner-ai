@@ -106,7 +106,7 @@ See [INTEGRATION.md](INTEGRATION.md) for complete integration documentation.
 
 | Tier | Planning | Review | Recommendation |
 |------|----------|--------|----------------|
-| Testing | Claude 3 Haiku | Claude 3 Haiku | Claude 3 Haiku |
+| Testing | Claude 4 Haiku | Claude 4 Haiku | Claude 4 Haiku |
 | Optimized | Claude 4 Sonnet | Claude 4 Haiku | Claude 4 Sonnet |
 | Premium | Claude 4 Opus | Claude 4 Opus | Claude 4 Opus |
 
@@ -171,6 +171,12 @@ ANTHROPIC_API_KEY=           # Required if AI_PROVIDER=anthropic
 # AWS (required if AI_PROVIDER=bedrock)
 AWS_REGION=us-east-1
 AWS_PROFILE=
+
+# Model override (optional — tier sets the default)
+# testing tier default: anthropic.claude-haiku-4-20250514-v1:0
+# optimized tier:       anthropic.claude-sonnet-4-20250514-v1:0
+# premium tier:         anthropic.claude-opus-4-20250514-v1:0
+BEDROCK_MODEL_ID=            # Leave blank to use tier default
 
 # Services
 REDIS_URL=redis://localhost:6379
@@ -280,6 +286,13 @@ The primary integration path sends plan data via REST API with session IDs (no U
 ---
 
 ## Changelog
+
+### v1.2.0 - Haiku 4 Default + API Fallback (Feb 2026)
+- Upgraded testing tier from Claude 3 Haiku to Claude 4 Haiku across all pipeline stages
+- `client.py` (langchain path) default updated to `claude-haiku-4-20250514`
+- Results page now fetches from `/api/v1/plan/{id}` when sessionStorage is empty (direct links and page refresh work)
+- Added `BEDROCK_MODEL_ID` and `DEPLOYMENT_TIER` to `.env.example`
+- SSE parsing tests + results page tests added (23 frontend tests total)
 
 ### v1.1.0 - Polish & Hardening (Feb 2026)
 - Dark mode with persistent theme preference across all pages

@@ -31,9 +31,9 @@ class ClaudeClient:
         # Model selection based on deployment tier
         self.model_config = {
             "testing": {
-                "planning": "claude-3-haiku-20240307",
-                "review": "claude-3-haiku-20240307",
-                "recommendation": "claude-3-haiku-20240307"
+                "planning": "claude-haiku-4-20250514",
+                "review": "claude-haiku-4-20250514",
+                "recommendation": "claude-haiku-4-20250514"
             },
             "optimized": {
                 "planning": "claude-sonnet-4-20250514",
