@@ -173,9 +173,9 @@ AWS_REGION=us-east-1
 AWS_PROFILE=
 
 # Model override (optional — tier sets the default)
-# testing tier default: anthropic.claude-haiku-4-20250514-v1:0
-# optimized tier:       anthropic.claude-sonnet-4-20250514-v1:0
-# premium tier:         anthropic.claude-opus-4-20250514-v1:0
+# testing tier default: anthropic.claude-haiku-4-5-20251001-v1:0
+# optimized tier:       anthropic.claude-sonnet-4-5-20250929-v1:0
+# premium tier:         anthropic.claude-opus-4-5-20251101-v1:0
 BEDROCK_MODEL_ID=            # Leave blank to use tier default
 
 # Services
@@ -280,7 +280,7 @@ The primary integration path sends plan data via REST API with session IDs (no U
 |---|---|---|---|---|
 | **Purpose** | Resume optimization | Project planning | AWS architecture design | Career planning |
 | **AI** | Claude via Bedrock | Claude via Bedrock/API | Claude via Bedrock | Claude via Bedrock |
-| **Tests** | 212 (98% cov) | 99 (86% cov) | 126 (67% cov) | 142 (99% cov) |
+| **Tests** | 212 (98% cov) | 99 (86% cov) | 133 (67% cov) | 142 (99% cov) |
 | **Build time** | 3 days | 2 days | 1 day | 2 hours |
 
 ---
