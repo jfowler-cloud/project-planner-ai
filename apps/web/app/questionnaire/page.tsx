@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { ThemeToggle } from "@/components/ThemeProvider";
+
+const basicsSchema = z.object({
+  name: z.string().min(2, "Project name must be at least 2 characters").max(100, "Project name too long"),
+  description: z.string().min(10, "Description must be at least 10 characters").max(500, "Description too long (max 500 chars)"),
+  target_users: z.string().min(3, "Target users must be at least 3 characters").max(200, "Too long (max 200 chars)"),
+});
 
 interface ProjectBasics {
   name: string;
@@ -51,6 +60,13 @@ export default function QuestionnairePage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [reviewCount, setReviewCount] = useState(3);
+
+  const {
+    register,
+    handleSubmit: handleBasicsSubmit,
+    formState: { errors: basicsErrors },
+    getValues: getBasicsValues,
+  } = useForm({ resolver: zodResolver(basicsSchema), mode: "onTouched" });
 
   const [basics, setBasics] = useState<ProjectBasics>({
     name: "",
@@ -178,20 +194,42 @@ export default function QuestionnairePage() {
 
         {/* Step 1: Basics */}
         {step === 1 && (
+          <form
+            onSubmit={handleBasicsSubmit((data) => {
+              setBasics((prev) => ({ ...prev, ...data }));
+              setStep(2);
+            })}
+          >
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Project Basics</h2>
             <div className="space-y-4">
               <div>
                 <label className={labelCls}>Project Name *</label>
-                <input type="text" value={basics.name} onChange={(e) => setBasics({ ...basics, name: e.target.value })} className={inputCls} placeholder="My Awesome Project" />
+                <input
+                  {...register("name", { value: basics.name })}
+                  className={inputCls}
+                  placeholder="My Awesome Project"
+                />
+                {basicsErrors.name && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{basicsErrors.name.message as string}</p>}
               </div>
               <div>
                 <label className={labelCls}>Description *</label>
-                <textarea value={basics.description} onChange={(e) => setBasics({ ...basics, description: e.target.value })} className={inputCls} rows={3} placeholder="What does your project do?" />
+                <textarea
+                  {...register("description", { value: basics.description })}
+                  className={inputCls}
+                  rows={3}
+                  placeholder="What does your project do?"
+                />
+                {basicsErrors.description && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{basicsErrors.description.message as string}</p>}
               </div>
               <div>
                 <label className={labelCls}>Target Users *</label>
-                <input type="text" value={basics.target_users} onChange={(e) => setBasics({ ...basics, target_users: e.target.value })} className={inputCls} placeholder="Who will use this?" />
+                <input
+                  {...register("target_users", { value: basics.target_users })}
+                  className={inputCls}
+                  placeholder="Who will use this?"
+                />
+                {basicsErrors.target_users && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{basicsErrors.target_users.message as string}</p>}
               </div>
               <div>
                 <label className={labelCls}>Timeline</label>
@@ -213,11 +251,12 @@ export default function QuestionnairePage() {
               </div>
             </div>
             <div className="flex justify-end mt-6">
-              <button onClick={() => setStep(2)} disabled={!basics.name || !basics.description || !basics.target_users} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600">
+              <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 Next
               </button>
             </div>
           </div>
+          </form>
         )}
 
         {/* Step 2: Technical */}

@@ -1,8 +1,11 @@
 import redis.asyncio as redis
 import json
 import hashlib
+import logging
 from typing import Optional, Any
 from ..config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class CacheClient:
@@ -18,7 +21,7 @@ class CacheClient:
             # Test connection
             await self.redis.ping()
         except Exception as e:
-            print(f"⚠️  Redis connection failed: {e}. Caching disabled.")
+            logger.warning("Redis unavailable, caching disabled: %s", e)
             self.redis = None
     
     async def disconnect(self):

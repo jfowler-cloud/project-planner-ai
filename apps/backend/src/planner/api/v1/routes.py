@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -52,6 +53,8 @@ async def limit_request_size(request: Request, call_next):
         return JSONResponse(status_code=413, content={"detail": "Request body too large (max 1MB)"})
     return await call_next(request)
 
+logger = logging.getLogger(__name__)
+
 claude_client = ClaudeClient()
 
 
@@ -91,6 +94,7 @@ async def create_plan(request: ProjectRequest) -> ProjectPlan:
     redis_count = await cache_client.get_rate_limit(user_id)
     if redis_count == -1:
         # Redis unavailable — use in-memory limiter
+        logger.warning("Redis unavailable, using in-memory rate limiter for user %s", user_id)
         _check_rate_limit(user_id)
     elif redis_count >= settings.rate_limit_per_hour:
         raise HTTPException(
