@@ -33,27 +33,35 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const router = useRouter();
   const [plan, setPlan] = useState<ProjectPlan | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
-  const [projectId, setProjectId] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [githubToken, setGithubToken] = useState("");
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    params.then((p) => setProjectId(p.id));
-    const storedPlan = sessionStorage.getItem("projectPlan");
-    if (storedPlan) {
-      const parsedPlan = JSON.parse(storedPlan);
-      setPlan(parsedPlan);
-      if (parsedPlan.selectedOptionIndex !== null && parsedPlan.selectedOptionIndex !== undefined) {
-        setSelectedOptionIndex(parsedPlan.selectedOptionIndex);
-      } else {
-        const idx = parsedPlan.architecture_options?.findIndex((opt: any) => opt.name === parsedPlan.recommended_option);
+    params.then(async (p) => {
+      // Try sessionStorage first (fast path — plan was just generated)
+      const storedPlan = sessionStorage.getItem("projectPlan");
+      if (storedPlan) {
+        const parsedPlan = JSON.parse(storedPlan);
+        setPlan(parsedPlan);
+        const idx = parsedPlan.selectedOptionIndex ?? parsedPlan.architecture_options?.findIndex((opt: any) => opt.name === parsedPlan.recommended_option) ?? 0;
         setSelectedOptionIndex(idx >= 0 ? idx : 0);
+        return;
       }
-    } else {
-      router.push("/questionnaire");
-    }
+
+      // Fallback: fetch from API (e.g. direct link or page refresh)
+      try {
+        const response = await fetch(`${API_URL}/api/v1/plan/${p.id}`);
+        if (!response.ok) throw new Error("Plan not found");
+        const fetchedPlan = await response.json();
+        setPlan(fetchedPlan);
+        const idx = fetchedPlan.architecture_options?.findIndex((opt: any) => opt.name === fetchedPlan.recommended_option) ?? 0;
+        setSelectedOptionIndex(idx >= 0 ? idx : 0);
+      } catch {
+        router.push("/questionnaire");
+      }
+    });
   }, [router, params]);
 
   useEffect(() => {
