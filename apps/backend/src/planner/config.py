@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     aws_profile: str = ""
     
     # Model settings
-    default_model: Literal["claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-haiku-4-20250514"] = "claude-sonnet-4-20250514"
+    default_model: Literal["claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5"] = "claude-haiku-4-5"
     max_tokens: int = 4096
     temperature: float = 0.3
     

@@ -106,9 +106,9 @@ See [INTEGRATION.md](INTEGRATION.md) for complete integration documentation.
 
 | Tier | Planning | Review | Recommendation |
 |------|----------|--------|----------------|
-| Testing | Claude 4 Haiku | Claude 4 Haiku | Claude 4 Haiku |
-| Optimized | Claude 4 Sonnet | Claude 4 Haiku | Claude 4 Sonnet |
-| Premium | Claude 4 Opus | Claude 4 Opus | Claude 4 Opus |
+| Testing | Claude Haiku 4.5 | Claude Haiku 4.5 | Claude Haiku 4.5 |
+| Optimized | Claude Sonnet 4.5 | Claude Haiku 4.5 | Claude Sonnet 4.5 |
+| Premium | Claude Opus 4.5 | Claude Opus 4.5 | Claude Opus 4.5 |
 
 ---
 

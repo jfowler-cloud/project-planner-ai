@@ -31,19 +31,19 @@ class ClaudeClient:
         # Model selection based on deployment tier
         self.model_config = {
             "testing": {
-                "planning": "claude-haiku-4-20250514",
-                "review": "claude-haiku-4-20250514",
-                "recommendation": "claude-haiku-4-20250514"
+                "planning": "claude-haiku-4-5",
+                "review": "claude-haiku-4-5",
+                "recommendation": "claude-haiku-4-5"
             },
             "optimized": {
-                "planning": "claude-sonnet-4-20250514",
-                "review": "claude-haiku-4-20250514",
-                "recommendation": "claude-sonnet-4-20250514"
+                "planning": "claude-sonnet-4-5",
+                "review": "claude-haiku-4-5",
+                "recommendation": "claude-sonnet-4-5"
             },
             "premium": {
-                "planning": "claude-opus-4-20250514",
-                "review": "claude-opus-4-20250514",
-                "recommendation": "claude-opus-4-20250514"
+                "planning": "claude-opus-4-5",
+                "review": "claude-opus-4-5",
+                "recommendation": "claude-opus-4-5"
             }
         }
         self.models = self.model_config[settings.deployment_tier]
@@ -57,9 +57,9 @@ class ClaudeClient:
             if self.use_bedrock:
                 # Map model names to Bedrock IDs
                 model_map = {
-                    "claude-opus-4-20250514": "anthropic.claude-opus-4-20250514-v1:0",
-                    "claude-sonnet-4-20250514": "anthropic.claude-sonnet-4-20250514-v1:0",
-                    "claude-haiku-4-20250514": "anthropic.claude-haiku-4-20250514-v1:0",
+                    "claude-opus-4-5":   "anthropic.claude-opus-4-5-20251101-v1:0",
+                    "claude-sonnet-4-5": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "claude-haiku-4-5":  "anthropic.claude-haiku-4-5-20251001-v1:0",
                     "claude-3-haiku-20240307": "anthropic.claude-3-haiku-20240307-v1:0",
                 }
                 bedrock_model = model_map.get(model, model)

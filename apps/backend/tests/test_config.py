@@ -8,7 +8,7 @@ def test_settings_defaults():
     assert settings.api_title == "Project Planner AI"
     assert settings.api_version == "0.1.0"
     assert settings.debug is False
-    assert settings.default_model == "claude-sonnet-4-20250514"
+    assert settings.default_model == "claude-haiku-4-5"
     assert settings.max_tokens == 4096
     assert settings.temperature == 0.3
     assert settings.cache_ttl == 3600

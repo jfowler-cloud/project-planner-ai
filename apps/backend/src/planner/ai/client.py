@@ -10,8 +10,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from ..constants import MAX_TOKENS, TEMPERATURE
 
 # Default model — override with BEDROCK_MODEL_ID env var
-# Uses Haiku 4 for cost-effective testing; set BEDROCK_MODEL_ID for other tiers
-_DEFAULT_MODEL_ID = "anthropic.claude-haiku-4-20250514-v1:0"
+# Uses Haiku 4.5 for cost-effective testing; set BEDROCK_MODEL_ID for other tiers
+_DEFAULT_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 logger = logging.getLogger(__name__)
 
