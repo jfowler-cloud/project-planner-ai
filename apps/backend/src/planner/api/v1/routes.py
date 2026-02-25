@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from contextlib import asynccontextmanager
 import json
 from typing import AsyncIterator, Optional
@@ -40,6 +40,17 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-GitHub-Token"],
 )
+
+# Request size limit — reject bodies larger than 1MB
+MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1MB
+
+
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_REQUEST_SIZE:
+        return JSONResponse(status_code=413, content={"detail": "Request body too large (max 1MB)"})
+    return await call_next(request)
 
 claude_client = ClaudeClient()
 

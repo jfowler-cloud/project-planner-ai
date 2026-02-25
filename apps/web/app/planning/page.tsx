@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ScaffoldIntegration from "@/components/ScaffoldIntegration";
 import { ThemeToggle } from "@/components/ThemeProvider";
+import { API_URL } from "@/lib/config";
 
 interface ProgressUpdate {
   status: string;
@@ -25,7 +26,7 @@ export default function PlanningPage() {
   const [rateLimitStats, setRateLimitStats] = useState<{ hour_remaining: number } | null>(null);
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiUrl = API_URL;
     fetch(`${apiUrl}/api/v1/rate-limit/stats?user_id=anonymous`)
       .then((r) => r.json())
       .then((data) => setRateLimitStats(data))
@@ -41,11 +42,10 @@ export default function PlanningPage() {
 
     const request = JSON.parse(projectRequest);
     setReviewCount(request.review_count || 3);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
     const fetchStream = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/v1/plan/stream`, {
+        const response = await fetch(`${API_URL}/api/v1/plan/stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(request),

@@ -369,21 +369,26 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
             
             data = json.loads(content)
             
-            # Ensure cost_breakdown has all required fields
+            # Ensure cost_breakdown has all required fields with defaults
             cost_data = data.get("cost_breakdown", {})
-            if "ai_api" not in cost_data:
-                cost_data["ai_api"] = "$0/month"
-            if "total_monthly" not in cost_data:
-                # Try to calculate from other fields or use a default
-                cost_data["total_monthly"] = cost_data.get("total", "$100/month")
-            if "total_yearly" not in cost_data:
-                # Extract monthly amount and multiply by 12
-                monthly = cost_data["total_monthly"]
+            defaults = {
+                "compute": "$0/month",
+                "storage": "$0/month",
+                "database": "$0/month",
+                "ai_api": "$0/month",
+                "networking": "$0/month",
+                "total_monthly": "$100/month",
+                "total_yearly": "$1200/year",
+            }
+            for field, default in defaults.items():
+                if field not in cost_data:
+                    cost_data[field] = default
+            if "total_monthly" in cost_data and "total_yearly" not in cost_data:
                 try:
-                    amount = int(''.join(filter(str.isdigit, monthly)))
+                    amount = int(''.join(filter(str.isdigit, cost_data["total_monthly"])))
                     cost_data["total_yearly"] = f"${amount * 12}/year"
-                except:
-                    cost_data["total_yearly"] = "$1200/year"
+                except Exception:
+                    cost_data["total_yearly"] = defaults["total_yearly"]
             
             # Fix risk_assessment if it's a dict instead of list
             risk_assessment = data.get("risk_assessment", [])

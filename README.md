@@ -58,7 +58,7 @@ Progress streams in real-time via SSE so you can watch the AI work.
 - Real-time AI planning with streaming progress (SSE)
 - Configurable review passes (1-10, default: 3)
 - Selectable architecture options during planning
-- AWS Bedrock integration (Claude 3.5 Sonnet)
+- AWS Bedrock integration (Claude via Bedrock / Anthropic API)
 - 3 deployment tiers (testing / optimized / premium)
 - Results page with 4 tabs (overview, architecture, costs, security)
 - **Scaffold AI integration** - Structured API handoff with session-based storage
@@ -68,7 +68,7 @@ Progress streams in real-time via SSE so you can watch the AI work.
 - Rate limiting (10 plans/hour) with in-memory fallback
 - React error boundaries on /planning and /results pages
 - Docker health checks for all services
-- 93 backend tests + 3 frontend tests
+- 93 backend tests + 6 frontend tests
 
 ### Integration with Scaffold AI
 
@@ -251,7 +251,7 @@ The backend has two FastAPI applications: the active v1 routes (`api/v1/routes.p
 The frontend uses `sessionStorage` to pass data between pages. Refreshing loses state, and results aren't shareable via URL. Server-side plan persistence (DynamoDB) is planned.
 
 ### Planner → Scaffold Handoff
-The integration passes plan data via URL query parameter, which works but loses structured metadata (tech stack, architecture name). A `postMessage` or shared-key approach would preserve richer data.
+The primary integration path sends plan data via REST API with session IDs (no URL length limits, full structured metadata preserved). The fallback path uses URL query parameters, which loses structured metadata (tech stack, architecture name). A `postMessage` or shared-key approach would further improve the fallback path.
 
 ---
 
@@ -276,6 +276,34 @@ The integration passes plan data via URL query parameter, which works but loses 
 | **AI** | Claude via Bedrock | Claude via Bedrock/API | Claude via Bedrock | Claude via Bedrock |
 | **Tests** | 212 (98% cov) | 99 (86% cov) | 126 (67% cov) | 142 (99% cov) |
 | **Build time** | 3 days | 2 days | 1 day | 2 hours |
+
+---
+
+## Suggested Polish
+
+Small improvements to tighten things up -- none of these are heavy lifts.
+
+### README / Documentation Fixes
+
+1. **Test count mismatch** -- Line 71 says "93 backend tests + 3 frontend tests" but the badge at the top says 99. Pick one source of truth and keep it current.
+2. **Model version inconsistency in Features** -- Line 61 says "AWS Bedrock integration (Claude 3.5 Sonnet)" but the model table below shows Claude 4 Sonnet/Opus/Haiku for optimized and premium tiers. Update the features bullet to match reality (e.g., "Claude via Bedrock / Anthropic API" without pinning a version).
+3. **Known Limitations section contradicts Features** -- "Planner -> Scaffold Handoff" (line 253) says data passes "via URL query parameter" and loses structured metadata, but the Features section (line 78) says "JSON-based with session IDs (no URL length limits)." Reconcile these -- the API-based approach is implemented, so the known limitation should note it's the *fallback* path that loses data, not the primary path.
+4. **`constants.py` model ID is stale** -- `constants.py:5` still references `us.anthropic.claude-3-5-sonnet-20241022-v2:0` while `claude.py` uses Claude 4 model IDs per tier. If `constants.py` `MODEL_ID` isn't used anywhere, remove it. If it is, align it with the tier system.
+
+### Quick Code Wins
+
+5. **Mask the GitHub token input** -- `results/[id]/page.tsx` renders the token in a visible text field. Change to `<input type="password" />` -- one-line fix, meaningful security improvement.
+6. **Add Zod validation on the questionnaire** -- `react-hook-form` and `zod` are already dependencies. Wire up a schema for name/description/target_users before the API call so users get instant feedback instead of a backend 422. ~20 lines.
+7. **Centralize `NEXT_PUBLIC_API_URL` fallback** -- The `process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"` pattern is repeated in `planning/page.tsx`, `results/[id]/page.tsx`, and `ScaffoldIntegration.tsx`. Extract to a single `lib/config.ts` export.
+8. **Cost breakdown defaults** -- `claude.py:372-386` provides defaults for `ai_api` if missing but not for all required fields (`compute`, `storage`, `database`, `networking`, `total_monthly`, `total_yearly`). Add defaults for the full set to avoid validation errors on incomplete AI responses.
+9. **Remove `langchain-aws` from pyproject.toml** -- It's listed as a dependency but never imported anywhere in the backend. Dead dependency.
+10. **Add request size limit middleware** -- FastAPI accepts arbitrarily large JSON bodies. A simple `Content-Length` check middleware (e.g., reject > 1MB) prevents abuse without needing auth.
+
+### Nice-to-Haves
+
+11. **`sessionStorage` -> URL-persisted plan ID** -- Even without DynamoDB, the backend already stores plans in `_plan_store`. If the results page read from `/api/v1/plan/{id}` on mount instead of `sessionStorage`, plans would survive page refreshes and be shareable. The backend endpoint already exists.
+12. **Log when Redis falls back to in-memory** -- The graceful degradation is great, but it's silent. A single `logger.warning("Redis unavailable, using in-memory rate limiter")` helps with debugging.
+13. **Frontend test coverage** -- 3 tests for the entire Next.js app is thin. Even just adding tests for the questionnaire form validation and SSE stream parsing would catch regressions in the most critical paths.
 
 ---
 

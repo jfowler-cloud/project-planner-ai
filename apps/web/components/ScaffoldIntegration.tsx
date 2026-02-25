@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { SCAFFOLD_URL, SCAFFOLD_BACKEND_URL } from "@/lib/config";
 
 interface ScaffoldIntegrationProps {
   projectPlan?: any;
@@ -44,7 +44,7 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
       
       try {
         // Send to Scaffold AI backend
-        const scaffoldBackendUrl = process.env.NEXT_PUBLIC_SCAFFOLD_BACKEND_URL || "http://localhost:8001";
+        const scaffoldBackendUrl = SCAFFOLD_BACKEND_URL;
         const response = await fetch(`${scaffoldBackendUrl}/api/import/plan`, {
           method: "POST",
           headers: {
@@ -60,7 +60,7 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
         const result = await response.json();
         
         // Open Scaffold AI with session ID
-        const scaffoldUrl = process.env.NEXT_PUBLIC_SCAFFOLD_URL || "http://localhost:3001";
+        const scaffoldUrl = SCAFFOLD_URL;
         window.open(`${scaffoldUrl}?from=planner&session=${result.session_id}`, "_blank");
         
         alert('Plan sent to Scaffold AI successfully!');
@@ -79,7 +79,7 @@ Requirements: ${projectPlan.technical.user_count} users, ${projectPlan.technical
 Please help me build this architecture on AWS.`;
         
         const encodedPrompt = encodeURIComponent(prompt);
-        const scaffoldUrl = process.env.NEXT_PUBLIC_SCAFFOLD_URL || "http://localhost:3001";
+        const scaffoldUrl = SCAFFOLD_URL;
         window.open(`${scaffoldUrl}?from=planner&prompt=${encodedPrompt}`, "_blank");
         
         alert('Using fallback method. Plan data copied to clipboard!');
@@ -232,7 +232,7 @@ Please help me build this architecture on AWS.`;
           {/* Footer */}
           <div className="border-t pt-4 mt-4">
             <a
-              href={process.env.NEXT_PUBLIC_SCAFFOLD_URL || "https://scaffold-ai.com"}
+              href={SCAFFOLD_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center"

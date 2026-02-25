@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ScaffoldIntegration from "@/components/ScaffoldIntegration";
 import { ThemeToggle } from "@/components/ThemeProvider";
+import { API_URL } from "@/lib/config";
 
 interface ProjectPlan {
   project_id: string;
@@ -66,7 +67,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     if (!githubToken) { setShowTokenModal(true); return; }
     setIsGenerating(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/generate-repo`, {
+      const response = await fetch(`${API_URL}/api/v1/generate-repo`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-GitHub-Token": githubToken },
         body: JSON.stringify({ plan }),
