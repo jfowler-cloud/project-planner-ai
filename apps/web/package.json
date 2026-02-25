@@ -12,29 +12,30 @@
     "test:watch": "jest --config jest.config.mjs --watch"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "mermaid": "^11.4.1",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
     "zod": "^3.24.1",
-    "@hookform/resolvers": "^3.9.1",
-    "zustand": "^5.0.2",
-    "mermaid": "^11.4.1"
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6",
+    "@testing-library/react": "^16",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^29",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/jest": "^29",
-    "@testing-library/react": "^16",
-    "@testing-library/jest-dom": "^6",
-    "jest": "^29",
-    "jest-environment-jsdom": "^29",
-    "typescript": "^5",
+    "autoprefixer": "^10",
     "eslint": "^9",
     "eslint-config-next": "^15.1.6",
-    "tailwindcss": "^3.4.17",
+    "jest": "^29",
+    "jest-environment-jsdom": "^29",
     "postcss": "^8",
-    "autoprefixer": "^10"
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5"
   }
 }

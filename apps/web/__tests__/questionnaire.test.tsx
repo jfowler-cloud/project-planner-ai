@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 // Mock next/navigation
 const mockPush = jest.fn();
@@ -33,44 +34,38 @@ describe("QuestionnairePage", () => {
     expect(screen.getByText("🚀 Demo")).toBeInTheDocument();
   });
 
-  it("Next button is disabled when required fields are empty", () => {
+  it("Next button is present and is a submit button", () => {
     render(<QuestionnairePage />);
     const nextButton = screen.getByText("Next");
-    expect(nextButton).toBeDisabled();
+    expect(nextButton).toBeInTheDocument();
+    expect(nextButton).toHaveAttribute("type", "submit");
   });
 
-  it("Next button enables when required fields are filled", () => {
+  it("shows validation errors when Next is clicked with empty fields", async () => {
     render(<QuestionnairePage />);
-
-    fireEvent.change(screen.getByPlaceholderText("My Awesome Project"), {
-      target: { value: "Test Project" },
+    await act(async () => {
+      fireEvent.click(screen.getByText("Next"));
     });
-    fireEvent.change(screen.getByPlaceholderText("What does your project do?"), {
-      target: { value: "A test project description" },
+    await waitFor(() => {
+      expect(screen.getByText(/at least 2 characters/i)).toBeInTheDocument();
     });
-    fireEvent.change(screen.getByPlaceholderText("Who will use this?"), {
-      target: { value: "Developers" },
-    });
-
-    const nextButton = screen.getByText("Next");
-    expect(nextButton).not.toBeDisabled();
   });
 
-  it("navigates to step 2 when Next is clicked with valid data", () => {
+  it("navigates to step 2 when Next is clicked with valid data", async () => {
+    const user = userEvent.setup();
     render(<QuestionnairePage />);
 
-    fireEvent.change(screen.getByPlaceholderText("My Awesome Project"), {
-      target: { value: "Test Project" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("What does your project do?"), {
-      target: { value: "A test project description" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("Who will use this?"), {
-      target: { value: "Developers" },
+    await user.type(screen.getByPlaceholderText("My Awesome Project"), "Test Project");
+    await user.type(screen.getByPlaceholderText("What does your project do?"), "A test project description that is long enough");
+    await user.type(screen.getByPlaceholderText("Who will use this?"), "Developers");
+
+    await act(async () => {
+      await user.click(screen.getByText("Next"));
     });
 
-    fireEvent.click(screen.getByText("Next"));
-    expect(screen.getByText("Technical Requirements")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Technical Requirements")).toBeInTheDocument();
+    });
   });
 
   it("Demo button fills form data and jumps to step 3", () => {
@@ -79,20 +74,22 @@ describe("QuestionnairePage", () => {
     expect(screen.getByText("Technology Preferences")).toBeInTheDocument();
   });
 
-  it("navigating back from step 2 returns to step 1", () => {
+  it("navigating back from step 2 returns to step 1", async () => {
+    const user = userEvent.setup();
     render(<QuestionnairePage />);
 
     // Fill step 1 and advance
-    fireEvent.change(screen.getByPlaceholderText("My Awesome Project"), {
-      target: { value: "Test" },
+    await user.type(screen.getByPlaceholderText("My Awesome Project"), "Test Project");
+    await user.type(screen.getByPlaceholderText("What does your project do?"), "A test project description that is long enough");
+    await user.type(screen.getByPlaceholderText("Who will use this?"), "Developers");
+
+    await act(async () => {
+      await user.click(screen.getByText("Next"));
     });
-    fireEvent.change(screen.getByPlaceholderText("What does your project do?"), {
-      target: { value: "desc" },
+
+    await waitFor(() => {
+      expect(screen.getByText("Technical Requirements")).toBeInTheDocument();
     });
-    fireEvent.change(screen.getByPlaceholderText("Who will use this?"), {
-      target: { value: "users" },
-    });
-    fireEvent.click(screen.getByText("Next"));
 
     // Now go back
     fireEvent.click(screen.getByText("Back"));
