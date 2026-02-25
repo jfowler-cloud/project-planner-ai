@@ -7,7 +7,10 @@ from functools import lru_cache
 from langchain_aws import ChatBedrock
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from ..constants import MAX_TOKENS, MODEL_ID, TEMPERATURE
+from ..constants import MAX_TOKENS, TEMPERATURE
+
+# Default model — override with BEDROCK_MODEL_ID env var
+_DEFAULT_MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0"
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +19,7 @@ logger = logging.getLogger(__name__)
 def get_llm() -> ChatBedrock:
     """Return a cached Bedrock LLM client."""
     return ChatBedrock(
-        model_id=os.getenv("BEDROCK_MODEL_ID", MODEL_ID),
+        model_id=os.getenv("BEDROCK_MODEL_ID", _DEFAULT_MODEL_ID),
         region_name=os.getenv("AWS_REGION", "us-east-1"),
         model_kwargs={"temperature": TEMPERATURE, "max_tokens": MAX_TOKENS},
     )
