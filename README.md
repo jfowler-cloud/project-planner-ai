@@ -173,9 +173,9 @@ AWS_REGION=us-east-1
 AWS_PROFILE=
 
 # Model override (optional — tier sets the default)
-# testing tier default: anthropic.claude-haiku-4-5-20251001-v1:0
-# optimized tier:       anthropic.claude-sonnet-4-5-20250929-v1:0
-# premium tier:         anthropic.claude-opus-4-5-20251101-v1:0
+# testing tier default: us.anthropic.claude-haiku-4-5-20251001-v1:0
+# optimized tier:       us.anthropic.claude-sonnet-4-5-20250929-v1:0
+# premium tier:         us.anthropic.claude-opus-4-5-20251101-v1:0
 BEDROCK_MODEL_ID=            # Leave blank to use tier default
 
 # Services
