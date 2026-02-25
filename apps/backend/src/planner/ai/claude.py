@@ -57,10 +57,10 @@ class ClaudeClient:
             if self.use_bedrock:
                 # Map model names to Bedrock IDs
                 model_map = {
-                    "claude-opus-4-5":   "anthropic.claude-opus-4-5-20251101-v1:0",
-                    "claude-sonnet-4-5": "anthropic.claude-sonnet-4-5-20250929-v1:0",
-                    "claude-haiku-4-5":  "anthropic.claude-haiku-4-5-20251001-v1:0",
-                    "claude-3-haiku-20240307": "anthropic.claude-3-haiku-20240307-v1:0",
+                    "claude-opus-4-5":   "us.anthropic.claude-opus-4-5-20251101-v1:0",
+                    "claude-sonnet-4-5": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "claude-haiku-4-5":  "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    "claude-3-haiku-20240307": "us.anthropic.claude-3-haiku-20240307-v1:0",
                 }
                 bedrock_model = model_map.get(model, model)
                 

@@ -280,12 +280,15 @@ The primary integration path sends plan data via REST API with session IDs (no U
 |---|---|---|---|---|
 | **Purpose** | Resume optimization | Project planning | AWS architecture design | Career planning |
 | **AI** | Claude via Bedrock | Claude via Bedrock/API | Claude via Bedrock | Claude via Bedrock |
-| **Tests** | 212 (98% cov) | 99 (86% cov) | 133 (67% cov) | 142 (99% cov) |
+| **Tests** | 212 (98% cov) | 99 (86% cov) | 133 (64% cov) | 142 (99% cov) |
 | **Build time** | 3 days | 2 days | 1 day | 2 hours |
 
 ---
 
 ## Changelog
+
+### v1.2.1 - Bedrock Inference Profile Fix (Feb 2026)
+- Fixed all Bedrock model IDs to use `us.` cross-region inference profile prefix — bare IDs (e.g. `anthropic.claude-haiku-4-5-20251001-v1:0`) were rejected by Bedrock in `us-east-1`; now use `us.anthropic.*` throughout `claude.py` and `client.py`
 
 ### v1.2.0 - Haiku 4 Default + API Fallback (Feb 2026)
 - Upgraded testing tier from Claude 3 Haiku to Claude 4 Haiku across all pipeline stages
