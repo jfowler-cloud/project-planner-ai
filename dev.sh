@@ -15,7 +15,7 @@ cd ../..
 
 # Start frontend
 cd apps/web
-NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_SCAFFOLD_URL=http://localhost:3001 npm run dev &
+NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_SCAFFOLD_URL=http://localhost:3001 pnpm dev &
 FRONTEND_PID=$!
 cd ../..
 
