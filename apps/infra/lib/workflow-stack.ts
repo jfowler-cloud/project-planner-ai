@@ -1,25 +1,16 @@
+/**
+ * WorkflowStack — Step Functions workflow + Cognito identity pool role bindings.
+ */
 import * as cdk from 'aws-cdk-lib'
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions'
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks'
-import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as iam from 'aws-cdk-lib/aws-iam'
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
-import * as sns from 'aws-cdk-lib/aws-sns'
+import * as cognito from 'aws-cdk-lib/aws-cognito'
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch'
 import * as cwActions from 'aws-cdk-lib/aws-cloudwatch-actions'
-import * as budgets from 'aws-cdk-lib/aws-budgets'
 import { Construct } from 'constructs'
-import * as path from 'path'
-
-interface WorkflowStackProps extends cdk.StackProps {
-  deploymentTier: 'testing' | 'optimized' | 'premium'
-}
-
-const MODEL_MAP = {
-  testing:   'us.anthropic.claude-haiku-4-5-20251001-v1:0',
-  optimized: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
-  premium:   'us.anthropic.claude-opus-4-5-20251101-v1:0',
-}
+import { FunctionsStack } from './functions-stack'
+import { DatabaseStack } from './database-stack'
 
 const REVIEW_CATEGORIES = [
   'security', 'scalability', 'cost_optimization', 'reliability',
@@ -27,97 +18,45 @@ const REVIEW_CATEGORIES = [
   'compliance', 'observability', 'disaster_recovery',
 ]
 
+interface WorkflowStackProps extends cdk.StackProps {
+  db: DatabaseStack
+  fns: FunctionsStack
+}
+
 export class WorkflowStack extends cdk.Stack {
-  public readonly stateMachineArn: string
-  public readonly plansTable: dynamodb.Table
+  readonly stateMachineArn: string
 
   constructor(scope: Construct, id: string, props: WorkflowStackProps) {
     super(scope, id, props)
 
-    const { deploymentTier } = props
-    const modelId = MODEL_MAP[deploymentTier]
+    const { db, fns } = props
 
-    // ── DynamoDB ──────────────────────────────────────────────────────────────
-    this.plansTable = new dynamodb.Table(this, 'PlansTable', {
-      tableName: 'project-planner-plans',
-      partitionKey: { name: 'planId', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      encryption: dynamodb.TableEncryption.AWS_MANAGED,
-      pointInTimeRecovery: true,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    })
+    // ── Step Functions tasks ─────────────────────────────────────────────────
+    const generatePlan = new tasks.LambdaInvoke(this, 'GeneratePlan', { lambdaFunction: fns.generatePlanFn, outputPath: '$.Payload' })
 
-    const bedrockPolicy = new iam.PolicyStatement({
-      actions: ['bedrock:InvokeModel'],
-      resources: [`arn:aws:bedrock:${this.region}::foundation-model/*`],
-    })
-
-    const commonEnv = {
-      DEPLOYMENT_TIER: deploymentTier,
-      BEDROCK_MODEL_ID: modelId,
-      PLANNER_PLANS_TABLE: this.plansTable.tableName,
-    }
-
-    const fnProps = (name: string): lambda.FunctionProps => ({
-      functionName: `project-planner-${name}`,
-      runtime: lambda.Runtime.PYTHON_3_12,
-      handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '..', '..', 'functions', name)),
-      timeout: cdk.Duration.minutes(5),
-      memorySize: 512,
-      environment: commonEnv,
-      tracing: lambda.Tracing.ACTIVE,
-    })
-
-    const generatePlanFn  = new lambda.Function(this, 'GeneratePlanFn',  fnProps('generate_plan'))
-    const reviewStepFn    = new lambda.Function(this, 'ReviewStepFn',    fnProps('review_step'))
-    const finalizePlanFn  = new lambda.Function(this, 'FinalizePlanFn',  fnProps('finalize_plan'))
-
-    for (const fn of [generatePlanFn, reviewStepFn, finalizePlanFn]) {
-      fn.addToRolePolicy(bedrockPolicy)
-    }
-    this.plansTable.grantWriteData(finalizePlanFn)
-
-    // ── Step Functions tasks ──────────────────────────────────────────────────
-
-    const generatePlan = new tasks.LambdaInvoke(this, 'GeneratePlan', {
-      lambdaFunction: generatePlanFn,
-      outputPath: '$.Payload',
-    })
-
-    // Fan-out: run all 10 review categories in parallel via Map state
-    // Each item: {category, iteration, questionnaire, recommended, review_findings}
     const reviewMap = new sfn.Map(this, 'ReviewCategories', {
-      // Build items array from static list — injected via Parameters
       itemsPath: sfn.JsonPath.stringAt('$.reviewItems'),
-      maxConcurrency: 3,  // Bedrock rate limit friendly
+      maxConcurrency: 3,
       resultPath: '$.reviewResults',
     })
 
-    const reviewStep = new tasks.LambdaInvoke(this, 'ReviewStep', {
-      lambdaFunction: reviewStepFn,
-      outputPath: '$.Payload',
-    })
+    const reviewStep = new tasks.LambdaInvoke(this, 'ReviewStep', { lambdaFunction: fns.reviewStepFn, outputPath: '$.Payload' })
     reviewMap.itemProcessor(reviewStep)
 
-    const finalizePlan = new tasks.LambdaInvoke(this, 'FinalizePlan', {
-      lambdaFunction: finalizePlanFn,
-      outputPath: '$.Payload',
-    })
+    const finalizePlan = new tasks.LambdaInvoke(this, 'FinalizePlan', { lambdaFunction: fns.finalizePlanFn, outputPath: '$.Payload' })
 
-    // Inject reviewItems before the Map state
     const prepareReviews = new sfn.Pass(this, 'PrepareReviews', {
       parameters: {
-        'plan_id.$':        '$.plan_id',
-        'questionnaire.$':  '$.questionnaire',
-        'recommended.$':    '$.recommended',
-        'alternatives.$':   '$.alternatives',
+        'plan_id.$': '$.plan_id',
+        'questionnaire.$': '$.questionnaire',
+        'recommended.$': '$.recommended',
+        'alternatives.$': '$.alternatives',
         'review_findings.$': '$.review_findings',
         reviewItems: REVIEW_CATEGORIES.map((cat, i) => ({
           category: cat,
           iteration: i + 1,
           'questionnaire.$': '$.questionnaire',
-          'recommended.$':   '$.recommended',
+          'recommended.$': '$.recommended',
           'review_findings.$': '$.review_findings',
         })),
       },
@@ -132,46 +71,8 @@ export class WorkflowStack extends cdk.Stack {
     })
 
     this.stateMachineArn = stateMachine.stateMachineArn
-    new cdk.CfnOutput(this, 'WorkflowArn', { value: stateMachine.stateMachineArn })
-    new cdk.CfnOutput(this, 'PlansTableName', { value: this.plansTable.tableName })
 
-    // ── CloudWatch Alarms ──────────────────────────────────────────────────
-    const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
-      topicName: 'ProjectPlanner-Alarms',
-    })
-
-    const allFns = [generatePlanFn, reviewStepFn, finalizePlanFn]
-    for (const fn of allFns) {
-      fn.metricErrors({ period: cdk.Duration.minutes(5) })
-        .createAlarm(this, `${fn.node.id}ErrorAlarm`, {
-          alarmName: `ProjectPlanner-${fn.node.id}-Errors`,
-          threshold: 1,
-          evaluationPeriods: 1,
-          treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        })
-        .addAlarmAction(new cwActions.SnsAction(alarmTopic))
-
-      fn.metricDuration({ statistic: 'p99', period: cdk.Duration.minutes(5) })
-        .createAlarm(this, `${fn.node.id}DurationAlarm`, {
-          alarmName: `ProjectPlanner-${fn.node.id}-P99Duration`,
-          threshold: 240_000,
-          evaluationPeriods: 3,
-          treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        })
-        .addAlarmAction(new cwActions.SnsAction(alarmTopic))
-    }
-
-    // DynamoDB throttle alarm
-    this.plansTable.metric('SystemErrors', { period: cdk.Duration.minutes(1) })
-      .createAlarm(this, 'PlansTableThrottleAlarm', {
-        alarmName: 'ProjectPlanner-DynamoDB-Plans-Throttles',
-        threshold: 1,
-        evaluationPeriods: 1,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-      })
-      .addAlarmAction(new cwActions.SnsAction(alarmTopic))
-
-    // SFN execution failure alarm
+    // SFN failure alarm
     stateMachine.metricFailed({ period: cdk.Duration.minutes(5) })
       .createAlarm(this, 'WorkflowFailedAlarm', {
         alarmName: 'ProjectPlanner-Workflow-ExecutionFailed',
@@ -180,26 +81,25 @@ export class WorkflowStack extends cdk.Stack {
         evaluationPeriods: 1,
         treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
       })
-      .addAlarmAction(new cwActions.SnsAction(alarmTopic))
+      .addAlarmAction(new cwActions.SnsAction(db.alarmTopic))
 
-    // ── Cost Budget ($25/mo) ───────────────────────────────────────────────
-    new budgets.CfnBudget(this, 'MonthlyBudget', {
-      budget: {
-        budgetName: 'project-planner-ai-monthly',
-        budgetLimit: { amount: 25, unit: 'USD' },
-        budgetType: 'COST',
-        timeUnit: 'MONTHLY',
-        costFilters: { TagKeyValue: ['user:Project$project-planner-ai'] },
-      },
-      notificationsWithSubscribers: [{
-        notification: {
-          comparisonOperator: 'GREATER_THAN',
-          notificationType: 'ACTUAL',
-          threshold: 80,
-          thresholdType: 'PERCENTAGE',
-        },
-        subscribers: [{ address: alarmTopic.topicArn, subscriptionType: 'SNS' }],
-      }],
+    // ── Cognito Identity Pool Roles ──────────────────────────────────────────
+    const userRole = new iam.Role(this, 'UserRole', {
+      assumedBy: new iam.FederatedPrincipal('cognito-identity.amazonaws.com', {
+        'StringEquals': { 'cognito-identity.amazonaws.com:aud': db.identityPool.ref },
+        'ForAnyValue:StringLike': { 'cognito-identity.amazonaws.com:amr': 'authenticated' },
+      }, 'sts:AssumeRoleWithWebIdentity'),
     })
+
+    fns.getExecutionFn.grantInvoke(userRole)
+    stateMachine.grantStartExecution(userRole)
+
+    new cognito.CfnIdentityPoolRoleAttachment(this, 'RoleAttachment', {
+      identityPoolId: db.identityPool.ref,
+      roles: { authenticated: userRole.roleArn },
+    })
+
+    // ── Outputs ──────────────────────────────────────────────────────────────
+    new cdk.CfnOutput(this, 'WorkflowArn', { value: stateMachine.stateMachineArn })
   }
 }

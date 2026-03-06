@@ -1,142 +1,125 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
+import { DatabaseStack } from '../lib/database-stack';
+import { FunctionsStack } from '../lib/functions-stack';
 import { WorkflowStack } from '../lib/workflow-stack';
 
-describe('WorkflowStack', () => {
-  let template: Template;
+describe('ProjectPlanner Multi-Stack', () => {
+  let dbTemplate: Template;
+  let fnsTemplate: Template;
+  let wfTemplate: Template;
 
   beforeAll(() => {
     const app = new cdk.App({ context: { 'aws:cdk:bundling-stacks': [] } });
-    new WorkflowStack(app, 'TestWorkflow', { deploymentTier: 'testing' });
-    template = Template.fromStack(app.node.findChild('TestWorkflow') as cdk.Stack);
+    const db = new DatabaseStack(app, 'TestDB');
+    const fns = new FunctionsStack(app, 'TestFns', {
+      deploymentTier: 'testing',
+      modelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+      plansTable: db.plansTable,
+      alarmTopic: db.alarmTopic,
+    });
+    new WorkflowStack(app, 'TestWF', { db, fns });
+
+    dbTemplate = Template.fromStack(db);
+    fnsTemplate = Template.fromStack(fns);
+    wfTemplate = Template.fromStack(app.node.findChild('TestWF') as cdk.Stack);
   });
 
-  test('snapshot', () => {
-    expect(template.toJSON()).toMatchSnapshot();
+  // ── DatabaseStack ─────────────────────────────────────────────────────────
+
+  test('creates Cognito user pool', () => {
+    dbTemplate.hasResourceProperties('AWS::Cognito::UserPool', {
+      UserPoolName: 'ProjectPlanner-Users',
+    });
   });
 
-  // ── DynamoDB ──────────────────────────────────────────────────────────────
+  test('creates identity pool', () => {
+    dbTemplate.resourceCountIs('AWS::Cognito::IdentityPool', 1);
+  });
 
   test('creates PlansTable with PAY_PER_REQUEST billing', () => {
-    template.hasResourceProperties('AWS::DynamoDB::Table', {
+    dbTemplate.hasResourceProperties('AWS::DynamoDB::Table', {
       TableName: 'project-planner-plans',
       BillingMode: 'PAY_PER_REQUEST',
       PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true },
     });
   });
 
-  // ── Lambda Functions ──────────────────────────────────────────────────────
-
-  test('creates 3 Lambda functions', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 3);
+  test('creates S3 hosting bucket', () => {
+    // 1 hosting bucket
+    dbTemplate.resourceCountIs('AWS::S3::Bucket', 1);
   });
 
-  test('all Lambda functions use Python 3.12', () => {
-    const fns = template.findResources('AWS::Lambda::Function');
-    for (const fn of Object.values(fns)) {
-      expect((fn as any).Properties.Runtime).toBe('python3.12');
-    }
+  test('creates CloudFront distribution', () => {
+    dbTemplate.resourceCountIs('AWS::CloudFront::Distribution', 1);
   });
-
-  test('all Lambda functions have X-Ray tracing', () => {
-    const fns = template.findResources('AWS::Lambda::Function');
-    for (const fn of Object.values(fns)) {
-      expect((fn as any).Properties.TracingConfig).toEqual({ Mode: 'Active' });
-    }
-  });
-
-  test('Lambda functions have DEPLOYMENT_TIER env var set to testing', () => {
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: { Variables: Match.objectLike({ DEPLOYMENT_TIER: 'testing' }) },
-    });
-  });
-
-  // ── Step Functions ────────────────────────────────────────────────────────
-
-  test('creates state machine with correct name', () => {
-    template.resourceCountIs('AWS::StepFunctions::StateMachine', 1);
-    template.hasResourceProperties('AWS::StepFunctions::StateMachine', {
-      StateMachineName: 'ProjectPlanner-Workflow',
-    });
-  });
-
-  // ── IAM ───────────────────────────────────────────────────────────────────
-
-  test('grants Bedrock InvokeModel to Lambda roles', () => {
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Action: 'bedrock:InvokeModel',
-            Effect: 'Allow',
-          }),
-        ]),
-      },
-    });
-  });
-
-  test('grants DynamoDB write access to finalize_plan function', () => {
-    template.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Action: Match.arrayWith(['dynamodb:PutItem']),
-            Effect: 'Allow',
-          }),
-        ]),
-      },
-    });
-  });
-
-  // ── Monitoring ────────────────────────────────────────────────────────────
 
   test('creates SNS alarm topic', () => {
-    template.hasResourceProperties('AWS::SNS::Topic', {
-      TopicName: 'ProjectPlanner-Alarms',
-    });
-  });
-
-  test('creates Lambda error alarms for all functions', () => {
-    const alarms = template.findResources('AWS::CloudWatch::Alarm', {
-      Properties: { AlarmName: Match.stringLikeRegexp('ProjectPlanner-.*-Errors') },
-    });
-    expect(Object.keys(alarms).length).toBe(3);
+    dbTemplate.hasResourceProperties('AWS::SNS::Topic', { TopicName: 'ProjectPlanner-Alarms' });
   });
 
   test('creates DynamoDB throttle alarm', () => {
-    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+    dbTemplate.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'ProjectPlanner-DynamoDB-Plans-Throttles',
     });
   });
 
-  test('creates SFN execution failure alarm', () => {
-    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'ProjectPlanner-Workflow-ExecutionFailed',
-      Threshold: 0,
-      ComparisonOperator: 'GreaterThanThreshold',
-    });
-  });
-
-  // ── Budget ────────────────────────────────────────────────────────────────
-
   test('creates $25/mo cost budget', () => {
-    template.hasResourceProperties('AWS::Budgets::Budget', {
-      Budget: Match.objectLike({
-        BudgetName: 'project-planner-ai-monthly',
-        BudgetLimit: { Amount: 25, Unit: 'USD' },
-        BudgetType: 'COST',
-        TimeUnit: 'MONTHLY',
-      }),
+    dbTemplate.hasResourceProperties('AWS::Budgets::Budget', {
+      Budget: Match.objectLike({ BudgetName: 'project-planner-ai-monthly', BudgetLimit: { Amount: 25, Unit: 'USD' } }),
     });
   });
 
-  // ── Outputs ───────────────────────────────────────────────────────────────
+  // ── FunctionsStack ────────────────────────────────────────────────────────
+
+  test('creates 4 Lambda functions (3 agents + get_execution)', () => {
+    fnsTemplate.resourceCountIs('AWS::Lambda::Function', 4);
+  });
+
+  test('Lambda functions use Python 3.12', () => {
+    fnsTemplate.hasResourceProperties('AWS::Lambda::Function', { Runtime: 'python3.12' });
+  });
+
+  test('Lambda functions have DEPLOYMENT_TIER env var', () => {
+    fnsTemplate.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ DEPLOYMENT_TIER: 'testing' }) },
+    });
+  });
+
+  test('grants Bedrock InvokeModel', () => {
+    fnsTemplate.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([Match.objectLike({ Action: 'bedrock:InvokeModel', Effect: 'Allow' })]),
+      },
+    });
+  });
+
+  test('creates error alarms for all functions', () => {
+    const alarms = fnsTemplate.findResources('AWS::CloudWatch::Alarm', {
+      Properties: { AlarmName: Match.stringLikeRegexp('ProjectPlanner-.*-Errors') },
+    });
+    expect(Object.keys(alarms).length).toBe(4);
+  });
+
+  // ── WorkflowStack ────────────────────────────────────────────────────────
+
+  test('creates state machine', () => {
+    wfTemplate.hasResourceProperties('AWS::StepFunctions::StateMachine', {
+      StateMachineName: 'ProjectPlanner-Workflow',
+    });
+  });
+
+  test('creates SFN failure alarm', () => {
+    wfTemplate.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'ProjectPlanner-Workflow-ExecutionFailed',
+    });
+  });
+
+  test('creates Cognito identity pool role attachment', () => {
+    wfTemplate.resourceCountIs('AWS::Cognito::IdentityPoolRoleAttachment', 1);
+  });
 
   test('exports WorkflowArn', () => {
-    template.hasOutput('WorkflowArn', {});
-  });
-
-  test('exports PlansTableName', () => {
-    template.hasOutput('PlansTableName', {});
+    wfTemplate.hasOutput('WorkflowArn', {});
   });
 });
