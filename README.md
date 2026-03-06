@@ -1,6 +1,6 @@
 # Project Planner AI
 
-> Turn ideas into production-ready project plans in minutes with AI-assisted architecture design
+> Turn ideas into production-ready, secure-by-default project plans through conversational AI refinement
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/jfowler-cloud/project-planner-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/jfowler-cloud/project-planner-ai/actions)
@@ -11,7 +11,7 @@
 ![Coverage: 86%](https://img.shields.io/badge/Coverage-86%25-brightgreen?style=flat-square)
 ![Phase](https://img.shields.io/badge/Phase-MVP-blue?style=flat-square)
 
-Describe your project in plain language — Project Planner AI generates architecture options, runs configurable critical reviews (security, cost, scalability), and produces a comprehensive plan. Hand it off to [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) for code generation and AWS deployment.
+Describe your project in plain language — Project Planner AI refines your idea through an interactive chat, generates architecture options with security and operational best practices baked in, runs configurable critical reviews (security, cost, scalability), and produces a comprehensive plan. Hand it off to [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) for code generation and AWS deployment.
 
 ---
 
@@ -38,51 +38,227 @@ Describe your project in plain language — Project Planner AI generates archite
 ## How It Works
 
 ```
-Questionnaire → AI Planning → Critical Reviews → Results → Scaffold AI
-   (3 steps)     (streaming)    (1-10 passes)    (4 tabs)   (one click)
+Questionnaire → Refinement Chat → AI Planning → Critical Reviews → Results → Scaffold AI
+   (3 steps)     (conversational)   (streaming)   (1-10 passes)    (4 tabs)   (one click)
 ```
 
 1. **Answer simple questions** — project basics, technical requirements, preferences (no jargon required)
-2. **AI generates architecture options** — 3-5 approaches analyzed and compared
-3. **Configurable critical review loop** — 1-10 iterations covering security, cost, scalability, reliability, performance
-4. **Review results** — 4-tab view: overview, architecture, costs, security
-5. **Hand off to Scaffold AI** — one-click transfer for code generation and infrastructure-as-code
+2. **Refine through conversation** — AI chatbot asks clarifying questions, surfaces gaps, and sharpens the idea before generating options (see [Refinement Chat](#refinement-chat) below)
+3. **AI generates architecture options** — 3-5 approaches with security, observability, and testing built in from the start
+4. **Configurable critical review loop** — 1-10 iterations covering security, cost, scalability, reliability, performance
+5. **Review results** — 4-tab view: overview, architecture, costs, security
+6. **Hand off to Scaffold AI** — one-click transfer for code generation and infrastructure-as-code
 
 Progress streams in real-time via SSE so you can watch the AI work.
+
+---
+
+## Refinement Chat
+
+After completing the questionnaire, a conversational refinement step helps sharpen the idea before committing to architecture generation. This follows the same pattern as [Scaffold AI's](https://github.com/jfowler-cloud/scaffold-ai) interactive chat.
+
+### Why Refine First?
+
+The questionnaire captures structured data, but the best plans come from exploring edge cases, constraints, and priorities that a form can't surface. The refinement chat bridges the gap between "I have an idea" and "I have a well-defined problem."
+
+### Interaction Flow
+
+```
+User completes questionnaire (3 steps)
+  │
+  v
+Refinement Chat opens with questionnaire context pre-loaded
+  │
+  ├─ AI: "Based on your inputs, I have a few questions before
+  │       I generate architecture options..."
+  │
+  ├─ AI asks clarifying questions about:
+  │   - Ambiguous requirements (e.g., "what does 'real-time' mean for your use case?")
+  │   - Missing concerns (e.g., "you didn't mention disaster recovery — is RPO/RTO important?")
+  │   - Priority trade-offs (e.g., "would you prefer lower cost or lower latency?")
+  │   - Scale expectations (e.g., "10K users — concurrent or total? Bursty or steady?")
+  │   - Integration points (e.g., "will this need to integrate with existing systems?")
+  │
+  ├─ User responds naturally in conversation
+  │
+  ├─ AI summarizes refined understanding:
+  │   "Here's what I'll design for: [summary]. Ready to generate options?"
+  │
+  └─ User confirms → AI planning begins (streaming SSE)
+```
+
+### Chat Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Context-aware** | Chat has full questionnaire data — no need to repeat yourself |
+| **Probing questions** | AI identifies gaps and ambiguities in the initial inputs |
+| **Trade-off exploration** | Surfaces cost vs performance vs complexity decisions |
+| **Requirement sharpening** | Turns vague inputs ("fast", "scalable") into specific constraints |
+| **Summary confirmation** | Shows a refined summary before generating options |
+| **Skip option** | Users can skip refinement and go straight to planning if satisfied |
+| **Conversation history** | Full chat preserved and passed to the planning phase as additional context |
+
+### Backend: Refinement Endpoint
+
+```
+POST /api/v1/refine
+{
+  "questionnaire": { ...structured form data... },
+  "messages": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ]
+}
+
+Response:
+{
+  "message": "AI's next question or summary",
+  "refined_requirements": { ...updated/enriched requirements... },
+  "ready_to_plan": false,    // true when AI has enough context
+  "refinement_summary": null // populated when ready_to_plan is true
+}
+```
+
+The `refined_requirements` are passed to the planning phase, enriching the original questionnaire data with insights from the conversation.
+
+---
+
+## Secure-by-Default Output
+
+Every architecture option generated by Project Planner AI includes production-grade security, observability, and operational best practices from the start — not as an afterthought.
+
+### What's Included by Default
+
+All generated plans follow the standards defined in [PROJECT_STANDARDS.md](https://github.com/jfowler-cloud/project-status-portal/blob/main/PROJECT_STANDARDS.md).
+
+#### Security (Least Privilege from Day One)
+
+| Practice | How It's Applied |
+|----------|-----------------|
+| **IAM least privilege** | Every Lambda, CodeBuild, and Step Functions role scoped to only the resources it needs. No `*` policies. |
+| **Encryption at rest** | DynamoDB (AWS-managed KMS), S3 (AES-256 or KMS), Secrets Manager (auto-encrypted) |
+| **Encryption in transit** | HTTPS enforced on all API endpoints, TLS for database connections |
+| **Authentication** | Cognito user pool with MFA optional, identity pool for temporary credentials |
+| **Authorization** | Group-based roles (admin/user) with scoped IAM policies per group |
+| **Secret management** | All tokens/keys in Secrets Manager or SSM Parameter Store — never in code or env vars |
+| **Dependency scanning** | Dependabot enabled, `npm audit` and `pip-audit` in CI |
+| **Input validation** | Pydantic (backend) and Zod (frontend) on all external inputs |
+| **CORS** | Explicit origin allowlist, no wildcards |
+
+#### Observability
+
+| Practice | How It's Applied |
+|----------|-----------------|
+| **Structured logging** | AWS Lambda Powertools Logger on every handler |
+| **Distributed tracing** | X-Ray via Powertools Tracer |
+| **Custom metrics** | Powertools Metrics for business events (invocations, errors, duration) |
+| **CloudWatch alarms** | Lambda error rate, P99 duration, DynamoDB throttles, Step Functions failures |
+| **CloudWatch dashboard** | Per-project dashboard with key operational metrics |
+| **Cost tagging** | All resources tagged with `Project`, `Environment`, `ManagedBy` |
+| **Budget alerts** | AWS Budget alarm per project (default $25/month threshold) |
+
+#### Testing & CI/CD
+
+| Practice | How It's Applied |
+|----------|-----------------|
+| **Mono-repo structure** | `apps/web`, `apps/functions`, `apps/agents`, `apps/infra` |
+| **Frontend tests** | Vitest + React Testing Library, 95% line coverage threshold |
+| **Frontend E2E** | Playwright with axe-core accessibility checks |
+| **Backend tests** | pytest + moto, 95% line coverage threshold |
+| **CDK tests** | Snapshot tests + assertion tests for all stacks |
+| **CI pipeline** | GitHub Actions: test + lint + type-check + security scan on every push |
+| **Branch protection** | CI must pass before merge to main |
+| **Dependency updates** | Dependabot weekly PRs for all ecosystems |
+
+#### UI & Theme
+
+| Practice | How It's Applied |
+|----------|-----------------|
+| **Dark mode default** | Dark mode enabled by default, preference persisted to localStorage |
+| **Red accent palette** | Consistent red accent (`#e8001c` primary) across all projects |
+| **Cloudscape projects** | CSS variable overrides for red primary scale in `index.css` |
+| **Tailwind projects** | Custom `accent` color scale in `tailwind.config.ts` |
+| **Toggle button** | Sun/moon toggle in top navigation, same placement across all apps |
+
+#### Operational Readiness
+
+| Practice | How It's Applied |
+|----------|-----------------|
+| **DynamoDB PITR** | Point-in-time recovery enabled on all tables |
+| **Removal policy** | `RETAIN` on stateful resources (tables, user pools), `DESTROY` on ephemeral |
+| **CHANGELOG.md** | Maintained with SemVer, git tags on releases |
+| **RUNBOOK.md** | Incident triage guide included in every generated repo |
+| **CLAUDE.md** | AI assistant context for AI-assisted development |
+| **Local dev** | docker-compose + LocalStack for offline development |
+| **PSP integration** | config.json compatible with [Project Status Portal](https://github.com/jfowler-cloud/project-status-portal) monitoring |
+
+### How This Works in Practice
+
+When the AI generates architecture options, the prompts include these standards as constraints. The critical review loop then validates compliance:
+
+```
+Architecture Generation
+  │ (prompts include security/observability/testing requirements)
+  v
+Options generated with IAM policies, alarms, test scaffolds included
+  │
+  v
+Critical Review Pass 1: Security
+  │ "Are all IAM policies least-privilege? Is encryption enabled everywhere?"
+  v
+Critical Review Pass 2: Cost
+  │ "Is DynamoDB on-demand? Are there unnecessary always-on resources?"
+  v
+Critical Review Pass 3: Scalability
+  │ ...
+  v
+Final plan includes security checklist, monitoring setup, test targets
+  │
+  v
+Scaffold AI generates repo with all of the above as code
+```
+
+The result: every repo created through the Planner → Scaffold pipeline starts at the production-ready baseline, not at zero.
 
 ---
 
 ## Features
 
 - Interactive 3-step questionnaire with demo mode
+- **Conversational refinement chat** — AI asks clarifying questions before generating options
+- **Secure-by-default output** — least privilege IAM, encryption, observability, testing baked into every plan
 - Real-time AI planning with streaming progress (SSE)
 - Configurable review passes (1-10, default: 3)
 - Selectable architecture options during planning
 - AWS Bedrock integration (Claude via Bedrock / Anthropic API)
 - 3 deployment tiers (testing / optimized / premium)
 - Results page with 4 tabs (overview, architecture, costs, security)
-- **Scaffold AI integration** - Structured API handoff with session-based storage
-- **Shared types package** - Type-safe integration between projects
+- **Scaffold AI integration** — Structured API handoff with session-based storage
+- **Shared types package** — Type-safe integration between projects
+- **PSP integration** — Generated repos include config.json for Project Status Portal monitoring
 - GitHub repository generation from completed plans (via X-GitHub-Token header)
 - Redis caching with graceful fallback (1-hour TTL)
 - Rate limiting (10 plans/hour) with in-memory fallback
 - React error boundaries on /planning and /results pages
 - Docker health checks for all services
-- 93 backend tests + 6 frontend tests
+- 93 backend tests + 23 frontend tests
 
 ### Integration with Scaffold AI
 
 Project Planner AI seamlessly integrates with [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) for code generation:
 
-- **One-click handoff** - Purple sidebar button sends plan data via REST API
-- **Structured data transfer** - JSON-based with session IDs (no URL length limits)
-- **Type-safe** - Shared TypeScript types ensure data consistency
-- **Backward compatible** - Falls back to URL parameters if API unavailable
-- **Session persistence** - Plans stored for retrieval (in-memory, Redis-ready)
+- **One-click handoff** — Purple sidebar button sends plan data via REST API
+- **Structured data transfer** — JSON-based with session IDs (no URL length limits)
+- **Type-safe** — Shared TypeScript types ensure data consistency
+- **Backward compatible** — Falls back to URL parameters if API unavailable
+- **Session persistence** — Plans stored for retrieval (in-memory, Redis-ready)
+- **Standards included** — Plan data includes security/testing/observability requirements so Scaffold generates compliant repos
 
 See [INTEGRATION.md](INTEGRATION.md) for complete integration documentation.
 
 ### Not Yet Implemented
+- Refinement chat UI (backend endpoint designed, frontend pending)
 - PDF/Markdown export (UI shows alert dialogs only)
 - DynamoDB persistence (config exists, no queries)
 - User authentication (AWS Cognito)
@@ -94,7 +270,7 @@ See [INTEGRATION.md](INTEGRATION.md) for complete integration documentation.
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 15 + React 19, Tailwind CSS, Zustand, React Hook Form + Zod |
+| Frontend | React 19 + Vite SPA, Tailwind CSS, Zustand, React Hook Form + Zod, React Router v7 |
 | Backend | FastAPI (Python 3.12+), Pydantic v2 |
 | AI | Anthropic Claude via direct API or AWS Bedrock |
 | Caching | Redis (local / ElastiCache) |
@@ -239,16 +415,20 @@ project-planner-ai/
 
 Project Planner AI and [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) work together for a complete plan-to-code workflow:
 
-1. Complete your project plan in Project Planner AI
+1. Complete your project plan in Project Planner AI (questionnaire → refinement chat → planning → results)
 2. Click the purple floating button (bottom-right corner) → "Open in Scaffold AI"
-3. Your plan description auto-populates the Scaffold AI chat
-4. Scaffold AI generates infrastructure-as-code, CI/CD pipelines, and security configs
+3. Your plan data — including refined requirements, security standards, and architecture — auto-populates the Scaffold AI chat
+4. Scaffold AI generates infrastructure-as-code, CI/CD pipelines, test scaffolds, and security configs
+5. Generated repo includes: mono-repo structure, coverage thresholds, CloudWatch alarms, RUNBOOK.md, CLAUDE.md, PSP config
 
 When running both locally, Project Planner AI runs on ports 8000/3000 and Scaffold AI on ports 8001/3001 (configured via `dev.sh`).
 
 ---
 
 ## Known Limitations
+
+### Refinement Chat (Not Yet Implemented)
+The conversational refinement step between questionnaire and planning is designed but not yet built. Currently, users go directly from the questionnaire to AI planning. The backend endpoint (`POST /api/v1/refine`) and frontend chat component are the next priority.
 
 ### Dual FastAPI App
 The backend has two FastAPI applications: the active v1 routes (`api/v1/routes.py`, used by the frontend) and a pipeline-based app (`planner/main.py`, not wired up). The pipeline app has additional features (10-step review pipeline, input sanitization) but is not reachable in normal use. Consolidation is planned.
@@ -263,11 +443,26 @@ The primary integration path sends plan data via REST API with session IDs (no U
 
 ## Roadmap
 
-- [ ] DynamoDB persistence (shareable plan URLs)
-- [ ] PDF/Markdown export
+### Phase 1: Refinement Chat & Secure Defaults
+- [ ] Refinement chat UI (chatbot between questionnaire and planning)
+- [ ] Refinement backend endpoint (`POST /api/v1/refine`)
+- [ ] Inject PROJECT_STANDARDS.md constraints into architecture generation prompts
+- [ ] Inject security/observability/testing defaults into critical review prompts
+- [ ] Pass refined requirements + standards to Scaffold AI handoff payload
+
+### Phase 2: Persistence, Auth & Deployment
+- [x] Migrate from Next.js to React + Vite SPA
+- [ ] Deploy to S3 + CloudFront (replaces Vercel, CDK-managed)
+- [ ] DynamoDB persistence (shareable plan URLs, conversation history)
 - [ ] User authentication (AWS Cognito)
 - [ ] Consolidate dual FastAPI apps
-- [ ] Structured planner → scaffold data handoff
+
+### Phase 3: Export & Integration
+- [ ] PDF/Markdown export
+- [ ] PSP config.json auto-generation in plan output
+- [ ] Structured planner → scaffold data handoff improvements
+
+### Phase 4: Advanced
 - [ ] Team collaboration
 - [ ] Multi-cloud support (Azure, GCP)
 - [ ] Compliance templates (HIPAA, SOC2)
@@ -287,7 +482,16 @@ The primary integration path sends plan data via REST API with session IDs (no U
 
 ## Changelog
 
-### v1.2.1 - Bedrock Inference Profile Fix (Feb 2026)
+### v1.3.0 - React + Vite SPA Migration (Mar 2026)
+- Migrated frontend from Next.js 15 to React 19 + Vite SPA (no SSR needed)
+- All pages ported to `src/pages/` with React Router v7 (`useNavigate`, `useParams`)
+- Components ported to `src/components/` — removed all `"use client"` directives
+- Fixed `api.ts` to use `VITE_API_URL` env var and correct `/api/v1/` paths
+- Updated `tsconfig.json` for Vite bundler resolution; added `vite-env.d.ts`
+- Migrated all tests from Jest globals to Vitest `vi.*` API (23 tests passing)
+- `ErrorBoundary` now wraps all routes in `App.tsx`
+
+
 - Fixed all Bedrock model IDs to use `us.` cross-region inference profile prefix — bare IDs (e.g. `anthropic.claude-haiku-4-5-20251001-v1:0`) were rejected by Bedrock in `us-east-1`; now use `us.anthropic.*` throughout `claude.py` and `client.py`
 
 ### v1.2.0 - Haiku 4 Default + API Fallback (Feb 2026)

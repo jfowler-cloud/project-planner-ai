@@ -1,22 +1,25 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 
-const mockPush = jest.fn();
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
-}));
+const mockNavigate = vi.fn();
 
-jest.mock("@/components/ScaffoldIntegration", () => ({
-  __esModule: true,
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router-dom")>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
+vi.mock("@/components/ScaffoldIntegration", () => ({
   default: () => <div data-testid="scaffold-integration" />,
 }));
 
-jest.mock("@/components/ThemeProvider", () => ({
+vi.mock("@/components/ThemeProvider", () => ({
   ThemeToggle: () => <button>Toggle</button>,
 }));
 
-global.fetch = jest.fn();
+global.fetch = vi.fn() as any;
 
-import ResultsPage from "@/app/results/[id]/page";
+import ResultsPage from "@/pages/Results";
 
 const mockPlan = {
   project_id: "test-123",
@@ -39,49 +42,50 @@ const mockPlan = {
 };
 
 beforeEach(() => {
-  mockPush.mockClear();
-  (global.fetch as jest.Mock).mockClear();
+  mockNavigate.mockClear();
+  (global.fetch as ReturnType<typeof vi.fn>).mockClear();
   Object.defineProperty(window, "sessionStorage", {
-    value: { getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn(), clear: jest.fn() },
+    value: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn(), clear: vi.fn() },
     writable: true,
   });
 });
 
+function renderPage(id = "test-123") {
+  return render(
+    <MemoryRouter initialEntries={[`/results/${id}`]}>
+      <Routes>
+        <Route path="/results/:id" element={<ResultsPage />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 describe("ResultsPage", () => {
   it("renders plan from sessionStorage", async () => {
-    (window.sessionStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(mockPlan));
-    render(<ResultsPage params={Promise.resolve({ id: "test-123" })} />);
-    await waitFor(() => {
-      expect(screen.getByText("Test Project")).toBeInTheDocument();
-    });
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
   });
 
   it("fetches plan from API when sessionStorage is empty", async () => {
-    (window.sessionStorage.getItem as jest.Mock).mockReturnValue(null);
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => mockPlan,
-    });
-    render(<ResultsPage params={Promise.resolve({ id: "test-123" })} />);
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => mockPlan });
+    renderPage();
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/v1/plan/test-123"));
     });
   });
 
   it("redirects to questionnaire when API fetch fails", async () => {
-    (window.sessionStorage.getItem as jest.Mock).mockReturnValue(null);
-    (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
-    render(<ResultsPage params={Promise.resolve({ id: "test-123" })} />);
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/questionnaire");
-    });
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false });
+    renderPage();
+    await waitFor(() => { expect(mockNavigate).toHaveBeenCalledWith("/questionnaire"); });
   });
 
   it("renders the ScaffoldIntegration component", async () => {
-    (window.sessionStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(mockPlan));
-    render(<ResultsPage params={Promise.resolve({ id: "test-123" })} />);
-    await waitFor(() => {
-      expect(screen.getByTestId("scaffold-integration")).toBeInTheDocument();
-    });
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByTestId("scaffold-integration")).toBeInTheDocument(); });
   });
 });
