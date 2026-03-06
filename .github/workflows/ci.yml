@@ -14,9 +14,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: cd apps/web && npm ci
-      - run: cd apps/web && npx tsc --noEmit
-      - run: cd apps/web && npm run test:coverage
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+        working-directory: apps/web
+      - run: npx tsc --noEmit
+        working-directory: apps/web
+      - run: npm run test:coverage
+        working-directory: apps/web
 
   backend:
     runs-on: ubuntu-latest
@@ -38,7 +43,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: cd apps/web && npm ci && npm audit --audit-level=high
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci && npm audit --audit-level=high
+        working-directory: apps/web
       - uses: astral-sh/setup-uv@v4
       - run: uv python install 3.12
       - run: cd apps/backend && uv sync --all-extras && uv run pip-audit
