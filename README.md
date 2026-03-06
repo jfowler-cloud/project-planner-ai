@@ -493,6 +493,9 @@ The primary integration path sends plan data via REST API with session IDs (no U
 ## Changelog
 
 ### v2.0.0 - Step Functions + Strands Refactor (Mar 2026)
+
+> **Looking for the LangChain version?** The previous LangChain-based pipeline is preserved on the [`legacy/langchain`](https://github.com/jfowler-cloud/project-planner-ai/tree/legacy/langchain) branch.
+
 - 🔄 Replaced LangChain/in-process pipeline with AWS Step Functions + Strands agent core
 - 🔄 `POST /api/v1/plan` now fires a Step Functions execution and returns `execution_arn`
 - 🔄 `GET /api/v1/plan/status/{arn}` polls execution status (replaces SSE streaming)
