@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { vi, beforeEach, describe, it, expect } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
@@ -87,5 +87,52 @@ describe("ResultsPage", () => {
     (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
     renderPage();
     await waitFor(() => { expect(screen.getByTestId("scaffold-integration")).toBeInTheDocument(); });
+  });
+
+  it("shows loading spinner before plan loads", () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    (global.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {})); // never resolves
+    renderPage();
+    expect(document.querySelector(".animate-spin")).toBeInTheDocument();
+  });
+
+  it("renders all tabs", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
+    ["overview", "architecture", "costs", "security"].forEach((tab) => {
+      expect(screen.getByRole("button", { name: tab })).toBeInTheDocument();
+    });
+  });
+
+  it("switches to architecture tab on click", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByRole("button", { name: "architecture" }));
+    expect(screen.getByText("Architecture Options")).toBeInTheDocument();
+  });
+
+  it("switches to costs tab on click", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByRole("button", { name: "costs" }));
+    expect(screen.getByText("Cost Breakdown")).toBeInTheDocument();
+  });
+
+  it("renders recommended option in overview", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Serverless")).toBeInTheDocument(); });
+    expect(screen.getByText("Best for small projects")).toBeInTheDocument();
+  });
+
+  it("New Plan button navigates to questionnaire", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByRole("button", { name: "New Plan" }));
+    expect(mockNavigate).toHaveBeenCalledWith("/questionnaire");
   });
 });
