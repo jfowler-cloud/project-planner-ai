@@ -9,7 +9,7 @@
 
 ![Tests: 99](https://img.shields.io/badge/Tests-99%20passing-brightgreen?style=flat-square)
 ![Coverage: 86%](https://img.shields.io/badge/Coverage-86%25-brightgreen?style=flat-square)
-![Phase](https://img.shields.io/badge/Phase-MVP-blue?style=flat-square)
+![Step Functions](https://img.shields.io/badge/Step%20Functions-Agent%20Core-orange?style=flat-square)
 
 Describe your project in plain language — Project Planner AI refines your idea through an interactive chat, generates architecture options with security and operational best practices baked in, runs configurable critical reviews (security, cost, scalability), and produces a comprehensive plan. Hand it off to [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) for code generation and AWS deployment.
 
@@ -38,18 +38,18 @@ Describe your project in plain language — Project Planner AI refines your idea
 ## How It Works
 
 ```
-Questionnaire → Refinement Chat → AI Planning → Critical Reviews → Results → Scaffold AI
-   (3 steps)     (conversational)   (streaming)   (1-10 passes)    (4 tabs)   (one click)
+Questionnaire → AI Planning → Parallel Reviews (x10) → Results → Scaffold AI
+   (3 steps)    (Step Functions)  (SFN Map state)      (4 tabs)   (one click)
 ```
 
 1. **Answer simple questions** — project basics, technical requirements, preferences (no jargon required)
 2. **Refine through conversation** — AI chatbot asks clarifying questions, surfaces gaps, and sharpens the idea before generating options (see [Refinement Chat](#refinement-chat) below)
 3. **AI generates architecture options** — 3-5 approaches with security, observability, and testing built in from the start
-4. **Configurable critical review loop** — 1-10 iterations covering security, cost, scalability, reliability, performance
+4. **Parallel critical review** — 10 review categories (security, cost, scalability, reliability, performance, maintainability, developer experience, compliance, observability, disaster recovery) run concurrently via Step Functions Map state
 5. **Review results** — 4-tab view: overview, architecture, costs, security
 6. **Hand off to Scaffold AI** — one-click transfer for code generation and infrastructure-as-code
 
-Progress streams in real-time via SSE so you can watch the AI work.
+`POST /api/v1/plan` starts a Step Functions execution and returns `execution_arn` immediately. Poll `GET /api/v1/plan/status/{arn}` for results.
 
 ---
 
@@ -84,7 +84,7 @@ Refinement Chat opens with questionnaire context pre-loaded
   ├─ AI summarizes refined understanding:
   │   "Here's what I'll design for: [summary]. Ready to generate options?"
   │
-  └─ User confirms → AI planning begins (streaming SSE)
+  └─ User confirms → AI planning begins (Step Functions execution)
 ```
 
 ### Chat Capabilities
@@ -228,7 +228,7 @@ The result: every repo created through the Planner → Scaffold pipeline starts 
 - Interactive 3-step questionnaire with demo mode
 - **Conversational refinement chat** — AI asks clarifying questions before generating options
 - **Secure-by-default output** — least privilege IAM, encryption, observability, testing baked into every plan
-- Real-time AI planning with streaming progress (SSE)
+- Real-time plan status polling via Step Functions execution ARN
 - Configurable review passes (1-10, default: 3)
 - Selectable architecture options during planning
 - AWS Bedrock integration (Claude via Bedrock / Anthropic API)
@@ -370,8 +370,8 @@ VITE_SCAFFOLD_URL=http://localhost:3001
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
-| POST | `/api/v1/plan` | Non-streaming plan generation |
-| POST | `/api/v1/plan/stream` | Streaming plan generation (SSE) |
+| POST | `/api/v1/plan` | Start plan generation — returns `{execution_arn, plan_id}` |
+| GET | `/api/v1/plan/status/{arn}` | Poll Step Functions execution status |
 | GET | `/api/v1/plan/{project_id}` | Retrieve a completed plan |
 | GET | `/api/v1/templates` | Common project templates |
 | POST | `/api/v1/generate-repo` | Generate GitHub repo from plan (X-GitHub-Token header) |
@@ -384,23 +384,32 @@ VITE_SCAFFOLD_URL=http://localhost:3001
 ```
 project-planner-ai/
 ├── apps/
-│   ├── web/                    # Next.js 15 frontend
+│   ├── web/                    # React + Vite SPA
 │   │   ├── app/
 │   │   │   ├── page.tsx        # Landing page
 │   │   │   ├── questionnaire/  # 3-step form
-│   │   │   ├── planning/       # AI planning progress (SSE)
+│   │   │   ├── planning/       # AI planning progress (polls execution status)
 │   │   │   └── results/[id]/   # Tabbed results display
 │   │   └── __tests__/          # 3 frontend test files
-│   └── backend/                # FastAPI backend
-│       ├── src/
-│       │   ├── main.py         # Entry point (runs v1 routes)
-│       │   └── planner/
-│       │       ├── api/v1/     # API routes
-│       │       ├── ai/         # Claude integration + caching
-│       │       ├── github/     # GitHub repo generator
-│       │       ├── models/     # Pydantic data models
-│       │       └── config.py   # Settings management
-│       └── tests/              # 21 backend test files
+│   ├── backend/                # FastAPI backend — fire-and-poll API
+│   │   ├── src/
+│   │   │   ├── main.py         # Entry point (runs v1 routes)
+│   │   │   └── planner/
+│   │   │       ├── api/v1/     # API routes (start SFN, poll status)
+│   │   │       ├── ai/         # Strands client + caching
+│   │   │       ├── github/     # GitHub repo generator
+│   │   │       ├── models/     # Pydantic data models
+│   │   │       └── config.py   # Settings management
+│   │   └── tests/              # 21 backend test files
+│   ├── functions/              # Lambda handlers — one per Step Functions state
+│   │   ├── generate_plan/      # Initial architecture plan via Strands
+│   │   ├── review_step/        # Single review iteration (invoked via Map state)
+│   │   ├── finalize_plan/      # Persist completed plan to DynamoDB
+│   │   └── get_execution/      # Poll SFN execution status
+│   ├── agents/
+│   │   └── shared/             # config.py, db.py — shared across functions
+│   └── infra/                  # CDK infrastructure
+│       └── lib/workflow-stack.ts  # Step Functions + DynamoDB
 ├── .github/workflows/          # CI, deploy, security scan
 ├── dev.sh                      # Local development startup
 ├── deploy.sh                   # Deployment script
@@ -431,7 +440,7 @@ When running both locally, Project Planner AI runs on ports 8000/3000 and Scaffo
 The conversational refinement step between questionnaire and planning is designed but not yet built. Currently, users go directly from the questionnaire to AI planning. The backend endpoint (`POST /api/v1/refine`) and frontend chat component are the next priority.
 
 ### Dual FastAPI App
-The backend has two FastAPI applications: the active v1 routes (`api/v1/routes.py`, used by the frontend) and a pipeline-based app (`planner/main.py`, not wired up). The pipeline app has additional features (10-step review pipeline, input sanitization) but is not reachable in normal use. Consolidation is planned.
+The backend has one FastAPI application: `api/v1/routes.py`. It starts a Step Functions execution on `POST /api/v1/plan` and returns `execution_arn` immediately. The frontend polls `GET /api/v1/plan/status/{arn}` until the execution succeeds.
 
 ### Session Storage
 The frontend uses `sessionStorage` to pass data between pages. Refreshing loses state, and results aren't shareable via URL. Server-side plan persistence (DynamoDB) is planned.
@@ -482,6 +491,16 @@ The primary integration path sends plan data via REST API with session IDs (no U
 
 ## Changelog
 
+### v2.0.0 - Step Functions + Strands Refactor (Mar 2026)
+- 🔄 Replaced LangChain/in-process pipeline with AWS Step Functions + Strands agent core
+- 🔄 `POST /api/v1/plan` now fires a Step Functions execution and returns `execution_arn`
+- 🔄 `GET /api/v1/plan/status/{arn}` polls execution status (replaces SSE streaming)
+- 🔄 10 review iterations now run as a Step Functions Map state (maxConcurrency=3)
+- ✨ Added `apps/functions/` Lambda handlers: `generate_plan`, `review_step`, `finalize_plan`, `get_execution`
+- ✨ Added `apps/agents/shared/` config + db helpers (consistent with PSP/scaffold-ai pattern)
+- ✨ Added `apps/infra/` CDK stack with Step Functions state machine + DynamoDB PlansTable
+- 🗑️ Removed `langchain-aws`, `langchain-core`, `anthropic` direct SDK
+
 ### v1.3.0 - React + Vite SPA Migration (Mar 2026)
 - Migrated frontend from Next.js 15 to React 19 + Vite SPA (no SSR needed)
 - All pages ported to `src/pages/` with React Router v7 (`useNavigate`, `useParams`)
@@ -496,7 +515,7 @@ The primary integration path sends plan data via REST API with session IDs (no U
 
 ### v1.2.0 - Haiku 4 Default + API Fallback (Feb 2026)
 - Upgraded testing tier from Claude 3 Haiku to Claude 4 Haiku across all pipeline stages
-- `client.py` (langchain path) default updated to `claude-haiku-4-20250514`
+- `client.py` (Strands path) default updated to `claude-haiku-4-20250514`
 - Results page now fetches from `/api/v1/plan/{id}` when sessionStorage is empty (direct links and page refresh work)
 - Added `BEDROCK_MODEL_ID` and `DEPLOYMENT_TIER` to `.env.example`
 - SSE parsing tests + results page tests added (23 frontend tests total)
@@ -507,7 +526,7 @@ The primary integration path sends plan data via REST API with session IDs (no U
 - Centralized `lib/config.ts` — single source of truth for all API/Scaffold URLs
 - Request size limit middleware (1MB max) on FastAPI
 - Full cost breakdown defaults — all 7 fields covered, no more validation errors on partial AI responses
-- Removed dead `langchain-aws` dependency
+- Removed dead `langchain-aws` dependency (now fully on Strands)
 - Removed stale `MODEL_ID` constant from `constants.py`
 - Redis fallback now logs a warning instead of printing to stdout
 - README: reconciled model version, test count, and Planner→Scaffold handoff description
