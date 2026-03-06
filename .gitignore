@@ -54,3 +54,7 @@ build/
 # Misc
 *.log
 .cache/
+
+# Test artifacts
+coverage.json
+test-results.json
