@@ -40,6 +40,29 @@ jobs:
           AI_PROVIDER: anthropic
           DEPLOYMENT_TIER: testing
 
+  functions:
+    name: Functions (Lambda handlers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv python install 3.12
+      - run: cd apps/functions && uv sync --all-extras
+      - run: cd apps/functions && uv run ruff check .
+      - run: cd apps/functions && uv run pytest tests/
+
+  infrastructure:
+    name: Infrastructure (CDK synth + Jest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: cd apps/infra && npm ci
+      - run: cd apps/infra && npx cdk synth
+      - run: cd apps/infra && npm test
+
   security:
     runs-on: ubuntu-latest
     permissions:
@@ -58,6 +81,10 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv python install 3.12
       - run: cd apps/backend && uv sync --all-extras && uv run pip-audit
+
+      - name: pip-audit (functions)
+        run: cd apps/functions && uv sync --all-extras && uv run pip-audit
+
       - uses: github/codeql-action/init@v3
         with:
           languages: python, javascript
