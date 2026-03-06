@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
       - run: uv python install 3.12
-      - run: cd apps/backend && uv sync
+      - run: cd apps/backend && uv sync --all-extras
       - run: cd apps/backend && uv run ruff check src/
       - run: cd apps/backend && uv run pytest tests/
         env:
@@ -41,7 +41,7 @@ jobs:
       - run: cd apps/web && npm ci && npm audit --audit-level=high
       - uses: astral-sh/setup-uv@v4
       - run: uv python install 3.12
-      - run: cd apps/backend && uv sync && uv run pip-audit
+      - run: cd apps/backend && uv sync --all-extras && uv run pip-audit
       - uses: github/codeql-action/init@v3
         with:
           languages: python, javascript
