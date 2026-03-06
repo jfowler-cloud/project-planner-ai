@@ -359,8 +359,8 @@ REDIS_URL=redis://localhost:6379
 GITHUB_TOKEN=                # Optional, for repo generation
 
 # Frontend
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_SCAFFOLD_URL=http://localhost:3001
+VITE_API_URL=http://localhost:8000
+VITE_SCAFFOLD_URL=http://localhost:3001
 ```
 
 ---

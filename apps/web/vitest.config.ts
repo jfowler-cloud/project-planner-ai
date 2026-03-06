@@ -15,12 +15,12 @@ export default defineConfig({
     globals: true,
     exclude: ['**/node_modules/**', '**/e2e/**', '**/*.spec.ts'],
     coverage: {
-      provider: 'v8',
+      provider: 'istanbul',
       reporter: ['text', 'json', 'lcov'],
       reportsDirectory: './coverage',
       all: true,
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/main.tsx', 'src/vite-env.d.ts'],
+      exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
       thresholds: {
         lines: 70,
         branches: 65,

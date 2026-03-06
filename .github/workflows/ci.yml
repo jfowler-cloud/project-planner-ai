@@ -22,6 +22,10 @@ jobs:
         working-directory: apps/web
       - run: npm run test:coverage
         working-directory: apps/web
+      - run: npx playwright install --with-deps
+        working-directory: apps/web
+      - run: npm run test:e2e
+        working-directory: apps/web
 
   backend:
     runs-on: ubuntu-latest
