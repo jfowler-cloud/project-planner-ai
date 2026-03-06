@@ -1,37 +1,36 @@
-"""Bedrock/Claude client wrapper."""
+"""Bedrock client wrapper — Strands replaces LangChain."""
 
 import logging
 import os
-from functools import lru_cache
 
-from langchain_aws import ChatBedrock
-from langchain_core.messages import HumanMessage, SystemMessage
+from strands import Agent
+from strands.models.bedrock import BedrockModel
 
 from ..constants import MAX_TOKENS, TEMPERATURE
 
-# Default model — override with BEDROCK_MODEL_ID env var
-# Uses Haiku 4.5 for cost-effective testing; set BEDROCK_MODEL_ID for other tiers
-_DEFAULT_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-
 logger = logging.getLogger(__name__)
 
+_MODEL_MAP = {
+    "testing":   "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "optimized": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "premium":   "us.anthropic.claude-opus-4-5-20251101-v1:0",
+}
 
-@lru_cache(maxsize=1)
-def get_llm() -> ChatBedrock:
-    """Return a cached Bedrock LLM client."""
-    return ChatBedrock(
-        model_id=os.getenv("BEDROCK_MODEL_ID", _DEFAULT_MODEL_ID),
-        region_name=os.getenv("AWS_REGION", "us-east-1"),
-        model_kwargs={"temperature": TEMPERATURE, "max_tokens": MAX_TOKENS},
-    )
+
+def _model_id() -> str:
+    tier = os.getenv("DEPLOYMENT_TIER", "testing")
+    return os.getenv("BEDROCK_MODEL_ID") or _MODEL_MAP.get(tier, _MODEL_MAP["testing"])
 
 
 async def invoke(system: str, user: str) -> str:
-    """Invoke the LLM and return the text response."""
-    llm = get_llm()
-    messages = [SystemMessage(content=system), HumanMessage(content=user)]
-    response = await llm.ainvoke(messages)
-    return response.content.strip()
+    """Invoke Bedrock via Strands and return the text response."""
+    model = BedrockModel(
+        model_id=_model_id(),
+        max_tokens=MAX_TOKENS,
+        temperature=TEMPERATURE,
+    )
+    agent = Agent(model=model, system_prompt=system)
+    return str(agent(user)).strip()
 
 
 def strip_code_fences(text: str) -> str:
