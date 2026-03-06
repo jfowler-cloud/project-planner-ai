@@ -23,6 +23,7 @@ dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
+    "pytest-json-report>=1.5",
     "ruff>=0.7.0",
     "mypy>=1.13.0",
 ]
@@ -37,6 +38,12 @@ select = ["E", "F", "I", "N", "W", "UP"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "--cov=src --cov-report=json --cov-report=term-missing -q"
+markers = [
+    "unit: fast isolated tests",
+    "integration: tests requiring mocked AWS services",
+    "slow: tests that take >5s",
+]
 
 [tool.mypy]
 python_version = "3.12"

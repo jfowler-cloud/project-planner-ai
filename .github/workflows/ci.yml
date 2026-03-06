@@ -2,69 +2,47 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
-  backend-test:
+  frontend:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v4
-      with:
-        version: "latest"
-    
-    - name: Set up Python
-      run: uv python install 3.12
-    
-    - name: Install dependencies
-      working-directory: apps/backend
-      run: |
-        uv sync
-        uv pip install -e ".[dev]"
-    
-    - name: Run tests
-      working-directory: apps/backend
-      env:
-        AI_PROVIDER: anthropic
-        DEPLOYMENT_TIER: testing
-      run: uv run pytest --cov=src --cov-report=xml
-    
-    - name: Lint
-      working-directory: apps/backend
-      run: uv run ruff check src/ || echo "Ruff not configured, skipping"
-    
-    - name: Type check
-      working-directory: apps/backend
-      run: uv run mypy src/ || echo "Mypy not configured, skipping"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: cd apps/web && npm ci
+      - run: cd apps/web && npx tsc --noEmit
+      - run: cd apps/web && npm run test:coverage
 
-  frontend-test:
+  backend:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
-    - name: Install dependencies
-      working-directory: apps/web
-      run: npm install
-    
-    - name: Lint
-      working-directory: apps/web
-      run: npm run lint
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv python install 3.12
+      - run: cd apps/backend && uv sync
+      - run: cd apps/backend && uv run ruff check src/
+      - run: cd apps/backend && uv run pytest tests/
+        env:
+          AI_PROVIDER: anthropic
+          DEPLOYMENT_TIER: testing
 
-    - name: Test
-      working-directory: apps/web
-      run: npm test -- --passWithNoTests
-
-    - name: Build
-      working-directory: apps/web
-      run: npm run build
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: cd apps/web && npm ci && npm audit --audit-level=high
+      - uses: astral-sh/setup-uv@v4
+      - run: uv python install 3.12
+      - run: cd apps/backend && uv sync && uv run pip-audit
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python, javascript
+      - uses: github/codeql-action/analyze@v3

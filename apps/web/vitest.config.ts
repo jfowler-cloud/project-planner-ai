@@ -13,5 +13,18 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     globals: true,
+    coverage: {
+      provider: 'istanbul',
+      reporter: ['text', 'json', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/main.tsx', 'src/vite-env.d.ts'],
+      thresholds: {
+        lines: 95,
+        branches: 90,
+        functions: 90,
+        statements: 95,
+      },
+    },
   },
 })
