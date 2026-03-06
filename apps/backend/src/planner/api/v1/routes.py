@@ -1,18 +1,18 @@
-import logging
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Header, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
-from contextlib import asynccontextmanager
 import json
-from typing import AsyncIterator, Optional
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-from ...config import settings
-from ...models.project import ProjectRequest, ProjectPlan
-from ...ai.claude import ClaudeClient
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+
 from ...ai.cache import cache_client
+from ...ai.claude import ClaudeClient
+from ...config import settings
 from ...github.generator import generate_repository
+from ...models.project import ProjectPlan, ProjectRequest
 from ...rate_limit import rate_limiter
-from ...validation import validate_repo_name
 
 # In-memory plan store: plan_id -> ProjectPlan dict
 # Survives within a single server process; plans are retrievable by ID
@@ -243,7 +243,7 @@ async def get_templates():
 @app.post("/api/v1/generate-repo")
 async def generate_repo(
     plan: ProjectPlan,
-    x_github_token: Optional[str] = Header(default=None, alias="X-GitHub-Token"),
+    x_github_token: str | None = Header(default=None, alias="X-GitHub-Token"),
 ):
     """Generate GitHub repository from plan.
 

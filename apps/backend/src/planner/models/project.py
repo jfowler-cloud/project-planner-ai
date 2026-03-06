@@ -1,6 +1,7 @@
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
-from datetime import datetime, timezone
 
 
 class ProjectBasics(BaseModel):
@@ -26,24 +27,24 @@ class TechnicalRequirements(BaseModel):
     heavy_computation: bool = False
     realtime_features: bool = False
     authentication: bool = True
-    auth_type: Optional[Literal["Email/Password", "OAuth", "SSO", "MFA"]] = None
+    auth_type: Literal["Email/Password", "OAuth", "SSO", "MFA"] | None = None
     compliance: list[Literal["None", "GDPR", "HIPAA", "SOC2", "PCI-DSS"]] = Field(default_factory=lambda: ["None"])
     rate_limiting: bool = True
     external_apis: bool = False
-    api_list: Optional[str] = None
+    api_list: str | None = None
     payment_processing: bool = False
     email_sms: bool = False
 
 
 class TechnologyPreferences(BaseModel):
     """Optional technology preferences"""
-    backend_language: Optional[Literal["Python", "Node.js", "Go", "Java", "No preference"]] = "No preference"
-    backend_framework: Optional[Literal["FastAPI", "Express", "Django", "Spring Boot", "No preference"]] = "No preference"
-    frontend_framework: Optional[Literal["React", "Vue", "Angular", "Svelte", "No preference"]] = "No preference"
+    backend_language: Literal["Python", "Node.js", "Go", "Java", "No preference"] | None = "No preference"
+    backend_framework: Literal["FastAPI", "Express", "Django", "Spring Boot", "No preference"] | None = "No preference"
+    frontend_framework: Literal["React", "Vue", "Angular", "Svelte", "No preference"] | None = "No preference"
     mobile_app: bool = False
-    database_type: Optional[Literal["SQL", "NoSQL", "Both", "No preference"]] = "No preference"
-    infrastructure: Optional[Literal["Serverless", "Containers", "VMs", "No preference"]] = "No preference"
-    cloud_provider: Optional[Literal["AWS", "Azure", "GCP", "No preference"]] = "No preference"
+    database_type: Literal["SQL", "NoSQL", "Both", "No preference"] | None = "No preference"
+    infrastructure: Literal["Serverless", "Containers", "VMs", "No preference"] | None = "No preference"
+    cloud_provider: Literal["AWS", "Azure", "GCP", "No preference"] | None = "No preference"
 
 
 class ProjectRequest(BaseModel):
@@ -52,8 +53,8 @@ class ProjectRequest(BaseModel):
     technical: TechnicalRequirements
     preferences: TechnologyPreferences = Field(default_factory=TechnologyPreferences)
     review_count: int = Field(default=3, ge=1, le=10)
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
+    user_id: str | None = None
+    session_id: str | None = None
 
 
 class ArchitectureOption(BaseModel):
@@ -114,13 +115,13 @@ class QuestionnaireInput(BaseModel):
     needs_auth: bool = False
     needs_realtime: bool = False
     needs_payments: bool = False
-    backend_lang: Optional[str] = None
-    frontend_framework: Optional[str] = None
-    infra_preference: Optional[str] = None
+    backend_lang: str | None = None
+    frontend_framework: str | None = None
+    infra_preference: str | None = None
     force_refresh: bool = False
     review_count: int = Field(default=3, ge=1, le=10)
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
+    user_id: str | None = None
+    session_id: str | None = None
 
 
 class ReviewFinding(BaseModel):

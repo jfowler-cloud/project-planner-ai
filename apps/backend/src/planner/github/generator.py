@@ -1,7 +1,7 @@
-from ..models.project import ProjectPlan
-from .client import GitHubClient
+from ..models.github import RepoResult
+from ..models.project import PlanOutput, ProjectPlan
 from ..validation import validate_repo_name
-
+from .client import GitHubClient
 
 DEV_SCRIPT = """#!/bin/bash
 
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Determine environment
         id: env
         run: |
@@ -104,7 +104,7 @@ jobs:
           else
             echo "tier=testing" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Deploy
         run: ./deploy.sh ${{{{ steps.env.outputs.tier }}}}
         env:
@@ -116,19 +116,19 @@ jobs:
 async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
     """Generate GitHub repository from project plan"""
     client = GitHubClient(github_token)
-    
+
     # Create repository - sanitize name to prevent invalid GitHub repo names
     repo_name = validate_repo_name(plan.basics.name)
     domain = f"{repo_name}.com"
-    
+
     repo = await client.create_repository(
         name=repo_name,
         description=plan.basics.description,
         private=True
     )
-    
+
     repo_full_name = repo["full_name"]
-    
+
     # Create dev.sh
     await client.create_file(
         repo_full_name,
@@ -136,7 +136,7 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
         DEV_SCRIPT.format(project_name=repo_name),
         "Add dev script"
     )
-    
+
     # Create deploy.sh
     await client.create_file(
         repo_full_name,
@@ -144,7 +144,7 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
         DEPLOY_SCRIPT.format(domain=domain),
         "Add deployment script"
     )
-    
+
     # Create vercel.json
     await client.create_file(
         repo_full_name,
@@ -152,7 +152,7 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
         VERCEL_JSON.format(domain=domain),
         "Add Vercel config"
     )
-    
+
     # Create GitHub workflow
     await client.create_file(
         repo_full_name,
@@ -160,7 +160,7 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
         GITHUB_WORKFLOW,
         "Add deployment workflow"
     )
-    
+
     # Create README
     readme = f"""# {plan.basics.name}
 
@@ -213,14 +213,14 @@ Or push to the respective branch for automatic deployment via GitHub Actions.
 
 {plan.timeline_estimate}
 """
-    
+
     await client.create_file(
         repo_full_name,
         "README.md",
         readme,
         "Add README"
     )
-    
+
     return repo["html_url"]
 
 
@@ -243,9 +243,6 @@ def _format_costs(costs) -> str:
 # ---------------------------------------------------------------------------
 # Public API used by routes and tests
 # ---------------------------------------------------------------------------
-
-from ..models.github import RepoResult
-from ..models.project import PlanOutput
 
 
 def _stack_table(stack: dict) -> str:

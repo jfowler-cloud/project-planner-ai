@@ -1,8 +1,9 @@
-import redis.asyncio as redis
-import json
 import hashlib
+import json
 import logging
-from typing import Optional, Any
+
+import redis.asyncio as redis
+
 from ..config import settings
 
 logger = logging.getLogger(__name__)
@@ -10,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 class CacheClient:
     """Redis cache client for AI responses"""
-    
+
     def __init__(self):
-        self.redis: Optional[redis.Redis] = None
-    
+        self.redis: redis.Redis | None = None
+
     async def connect(self):
         """Connect to Redis"""
         try:
@@ -23,42 +24,42 @@ class CacheClient:
         except Exception as e:
             logger.warning("Redis unavailable, caching disabled: %s", e)
             self.redis = None
-    
+
     async def disconnect(self):
         """Disconnect from Redis"""
         if self.redis:
             await self.redis.close()
-    
+
     def _generate_cache_key(self, request_data: dict) -> str:
         """Generate cache key from request data"""
         # Sort keys for consistent hashing
         sorted_data = json.dumps(request_data, sort_keys=True)
         return f"plan:{hashlib.sha256(sorted_data.encode()).hexdigest()}"
-    
-    async def get_cached_plan(self, request_data: dict) -> Optional[dict]:
+
+    async def get_cached_plan(self, request_data: dict) -> dict | None:
         """Get cached plan if exists"""
         if not self.redis:
             return None
-        
+
         cache_key = self._generate_cache_key(request_data)
         cached = await self.redis.get(cache_key)
-        
+
         if cached:
             return json.loads(cached)
         return None
-    
+
     async def cache_plan(self, request_data: dict, plan_data: dict):
         """Cache plan with TTL"""
         if not self.redis:
             return
-        
+
         cache_key = self._generate_cache_key(request_data)
         await self.redis.setex(
             cache_key,
             settings.cache_ttl,
             json.dumps(plan_data)
         )
-    
+
     async def increment_rate_limit(self, user_id: str) -> int:
         """Increment rate limit counter"""
         if not self.redis:

@@ -51,7 +51,7 @@ class ResponseCache:
         return len(expired)
 
     def get_stats(self) -> dict:
-        now = time.time()
+        time.time()
         active = sum(1 for _, ts in self._cache.values() if not self._is_expired(ts))
         return {
             "total_entries": len(self._cache),

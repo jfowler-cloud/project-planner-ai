@@ -8,7 +8,12 @@ from datetime import datetime
 
 from ..models.project import ArchitectureOption, PlanOutput, QuestionnaireInput, ReviewFinding
 from .client import invoke, strip_code_fences
-from .prompts import INITIAL_PLAN_PROMPT, REVIEW_CATEGORIES, REVIEW_ITERATION_PROMPT, SYSTEM_ARCHITECT
+from .prompts import (
+    INITIAL_PLAN_PROMPT,
+    REVIEW_CATEGORIES,
+    REVIEW_ITERATION_PROMPT,
+    SYSTEM_ARCHITECT,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -1,21 +1,22 @@
-import anthropic
+import asyncio
 import json
 import logging
-import boto3
-from typing import AsyncIterator
-from ..config import settings
-from ..models.project import ProjectRequest, ArchitectureOption, ProjectPlan, CostBreakdown
-from datetime import datetime, timezone
 import uuid
-import asyncio
+from datetime import UTC, datetime
 from functools import partial
+
+import anthropic
+import boto3
+
+from ..config import settings
+from ..models.project import ArchitectureOption, CostBreakdown, ProjectPlan, ProjectRequest
 
 logger = logging.getLogger(__name__)
 
 
 class ClaudeClient:
     """Client for Claude AI API (Anthropic or Bedrock)"""
-    
+
     def __init__(self):
         if settings.ai_provider == "bedrock":
             session = boto3.Session(
@@ -27,7 +28,7 @@ class ClaudeClient:
         else:
             self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
             self.use_bedrock = False
-        
+
         # Model selection based on deployment tier
         self.model_config = {
             "testing": {
@@ -47,12 +48,12 @@ class ClaudeClient:
             }
         }
         self.models = self.model_config[settings.deployment_tier]
-    
+
     async def _call_claude(self, prompt: str, model: str, max_tokens: int = None, retry_count: int = 0) -> str:
         """Call Claude via Anthropic or Bedrock with retry logic"""
         max_tokens = max_tokens or settings.max_tokens
         max_retries = 3
-        
+
         try:
             if self.use_bedrock:
                 # Map model names to Bedrock IDs
@@ -63,7 +64,7 @@ class ClaudeClient:
                     "claude-3-haiku-20240307": "us.anthropic.claude-3-haiku-20240307-v1:0",
                 }
                 bedrock_model = model_map.get(model, model)
-                
+
                 # Run blocking call in thread pool
                 loop = asyncio.get_event_loop()
                 response = await loop.run_in_executor(
@@ -79,7 +80,7 @@ class ClaudeClient:
                         })
                     )
                 )
-                
+
                 result = json.loads(response["body"].read())
                 text = result["content"][0]["text"]
                 if not text:
@@ -112,9 +113,9 @@ class ClaudeClient:
             else:
                 logger.error(f"Failed to call Claude after {retry_count + 1} attempts: {e}")
                 raise
-    
+
     async def generate_architecture_options(
-        self, 
+        self,
         request: ProjectRequest,
         model: str = None
     ) -> list[ArchitectureOption]:
@@ -128,7 +129,7 @@ class ClaudeClient:
             logger.error(f"generate_architecture_options failed: {e}", exc_info=True)
             options = self._get_default_options()
         return options
-    
+
     async def perform_critical_review(
         self,
         request: ProjectRequest,
@@ -136,7 +137,7 @@ class ClaudeClient:
         iteration: int
     ) -> dict:
         """Perform one iteration of critical review"""
-        
+
         review_types = [
             "Security Review",
             "Cost Analysis",
@@ -149,18 +150,18 @@ class ClaudeClient:
             "Compliance & Legal",
             "Future-Proofing"
         ]
-        
+
         review_type = review_types[iteration - 1] if iteration <= 10 else "General Review"
-        
+
         prompt = self._build_review_prompt(request, options, review_type)
         content = await self._call_claude(prompt, self.models["review"], 2048)
-        
+
         return {
             "iteration": iteration,
             "review_type": review_type,
             "findings": content
         }
-    
+
     async def generate_final_recommendation(
         self,
         request: ProjectRequest,
@@ -168,12 +169,12 @@ class ClaudeClient:
         reviews: list[dict]
     ) -> ProjectPlan:
         """Generate final recommendation after all reviews"""
-        
+
         prompt = self._build_recommendation_prompt(request, options, reviews)
         content = await self._call_claude(prompt, self.models["recommendation"])
         plan = self._parse_final_plan(request, options, content)
         return plan
-    
+
     def _build_architecture_prompt(self, request: ProjectRequest) -> str:
         """Build prompt for architecture generation"""
         return f"""You are an expert cloud architect. Generate 3-5 architecture options for this project.
@@ -223,10 +224,10 @@ CRITICAL: Format as JSON array. Example structure:
     "best_for": "Small to medium projects"
   }}
 ]"""
-    
+
     def _build_review_prompt(
-        self, 
-        request: ProjectRequest, 
+        self,
+        request: ProjectRequest,
         options: list[ArchitectureOption],
         review_type: str
     ) -> str:
@@ -235,7 +236,7 @@ CRITICAL: Format as JSON array. Example structure:
             f"Option {i+1}: {opt.name}\n{opt.description}\nStack: {opt.stack}"
             for i, opt in enumerate(options)
         ])
-        
+
         return f"""Perform a {review_type} for these architecture options.
 
 Project: {request.basics.name}
@@ -251,7 +252,7 @@ Provide specific findings for {review_type}:
 - Best practices to follow
 
 Be concise but thorough."""
-    
+
     def _build_recommendation_prompt(
         self,
         request: ProjectRequest,
@@ -263,12 +264,12 @@ Be concise but thorough."""
             f"Option {i+1}: {opt.name}\nCost: {opt.cost_estimate}\nComplexity: {opt.complexity}"
             for i, opt in enumerate(options)
         ])
-        
+
         reviews_text = "\n\n".join([
             f"{r['review_type']}:\n{r['findings']}"
             for r in reviews
         ])
-        
+
         return f"""Based on all reviews, recommend the best architecture option.
 
 Project: {request.basics.name}
@@ -304,7 +305,7 @@ IMPORTANT: cost_breakdown MUST include all 7 fields:
 IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
 - risk_assessment: ["Risk 1", "Risk 2", "Risk 3", "Risk 4", "Risk 5"]
 - security_checklist: ["Item 1", "Item 2", ...]"""
-    
+
     def _parse_architecture_options(self, content: str) -> list[ArchitectureOption]:
         """Parse architecture options from Claude response"""
         try:
@@ -313,9 +314,9 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
-            
+
             data = json.loads(content)
-            
+
             # Validate and fix each option
             options = []
             for opt in data:
@@ -323,14 +324,14 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
                 if isinstance(opt.get("stack"), list):
                     stack_list = opt["stack"]
                     opt["stack"] = {f"tech_{i}": tech for i, tech in enumerate(stack_list)}
-                
+
                 # Fix stack values if they are lists instead of strings
                 if isinstance(opt.get("stack"), dict):
                     for key, value in opt["stack"].items():
                         if isinstance(value, list):
                             # Join list items into a string
                             opt["stack"][key] = ", ".join(value)
-                
+
                 # Fix complexity if it's not exactly Low/Medium/High
                 complexity = opt.get("complexity", "Medium")
                 if complexity not in ["Low", "Medium", "High"]:
@@ -341,14 +342,14 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
                         opt["complexity"] = "High"
                     else:
                         opt["complexity"] = "Medium"
-                
+
                 options.append(ArchitectureOption(**opt))
-            
+
             return options
         except Exception as e:
             logger.error("Failed to parse architecture options from AI response: %s", e, exc_info=True)
             return self._get_default_options()
-    
+
     def _parse_final_plan(
         self,
         request: ProjectRequest,
@@ -361,14 +362,14 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
-            
+
             # Try to fix common JSON issues
             # Remove trailing commas before closing braces/brackets
             import re
             content = re.sub(r',(\s*[}\]])', r'\1', content)
-            
+
             data = json.loads(content)
-            
+
             # Ensure cost_breakdown has all required fields with defaults
             cost_data = data.get("cost_breakdown", {})
             defaults = {
@@ -389,22 +390,22 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
                     cost_data["total_yearly"] = f"${amount * 12}/year"
                 except Exception:
                     cost_data["total_yearly"] = defaults["total_yearly"]
-            
+
             # Fix risk_assessment if it's a dict instead of list
             risk_assessment = data.get("risk_assessment", [])
             if isinstance(risk_assessment, dict):
                 # Extract values from dict
                 risk_assessment = list(risk_assessment.values())
-            
+
             # Fix security_checklist if it's a dict instead of list
             security_checklist = data.get("security_checklist", [])
             if isinstance(security_checklist, dict):
                 # Extract values from dict
                 security_checklist = list(security_checklist.values())
-            
+
             return ProjectPlan(
                 project_id=str(uuid.uuid4()),
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
                 basics=request.basics,
                 technical=request.technical,
                 preferences=request.preferences,
@@ -422,7 +423,7 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
             logger.error("Failed to parse final plan from AI response: %s", e, exc_info=True)
             logger.error("Content was: %s", content[:500])
             return self._get_default_plan(request, options)
-    
+
     def _get_default_options(self) -> list[ArchitectureOption]:
         """Default architecture options as fallback"""
         return [
@@ -437,7 +438,7 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
                 best_for="MVPs and variable traffic"
             )
         ]
-    
+
     def _get_default_plan(
         self,
         request: ProjectRequest,
@@ -446,7 +447,7 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
         """Default plan as fallback"""
         return ProjectPlan(
             project_id=str(uuid.uuid4()),
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             basics=request.basics,
             technical=request.technical,
             preferences=request.preferences,

@@ -1,10 +1,10 @@
 """Token bucket rate limiter, per-IP."""
 
-import time
 import logging
+import time
 from collections import defaultdict
 
-from .constants import RATE_LIMIT_PER_MINUTE, RATE_LIMIT_PER_HOUR
+from .constants import RATE_LIMIT_PER_HOUR, RATE_LIMIT_PER_MINUTE
 
 logger = logging.getLogger(__name__)
 
