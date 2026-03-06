@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from .ai.client import get_llm
+from .ai.client import invoke
 from .ai.pipeline import run_pipeline
 from .cache import make_cache_key, response_cache
 from .github.client import GitHubClient, get_github_token
