@@ -12,5 +12,5 @@ new WorkflowStack(app, 'ProjectPlannerWorkflowStack', {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region:  process.env.CDK_DEFAULT_REGION ?? 'us-east-1',
   },
-  tags: { Project: 'project-planner-ai', Tier: tier },
+  tags: { Project: 'project-planner-ai', Environment: tier, ManagedBy: 'cdk' },
 })
