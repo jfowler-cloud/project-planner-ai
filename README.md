@@ -409,7 +409,8 @@ project-planner-ai/
 │   ├── agents/
 │   │   └── shared/             # config.py, db.py — shared across functions
 │   └── infra/                  # CDK infrastructure
-│       └── lib/workflow-stack.ts  # Step Functions + DynamoDB
+│       ├── lib/workflow-stack.ts  # Step Functions + DynamoDB + alarms + budget
+│       └── test/               # Snapshot + assertion tests (16 tests)
 ├── .github/workflows/          # CI, deploy, security scan
 ├── dev.sh                      # Local development startup
 ├── deploy.sh                   # Deployment script
@@ -461,7 +462,7 @@ The primary integration path sends plan data via REST API with session IDs (no U
 
 ### Phase 2: Persistence, Auth & Deployment
 - [x] Migrate from Next.js to React + Vite SPA
-- [ ] Deploy to S3 + CloudFront (replaces Vercel, CDK-managed)
+- [x] Deploy to S3 + CloudFront (CDK-managed, `apps/infra/workflow-stack.ts`)
 - [ ] DynamoDB persistence (shareable plan URLs, conversation history)
 - [ ] User authentication (AWS Cognito)
 - [ ] Consolidate dual FastAPI apps
@@ -499,6 +500,10 @@ The primary integration path sends plan data via REST API with session IDs (no U
 - ✨ Added `apps/functions/` Lambda handlers: `generate_plan`, `review_step`, `finalize_plan`, `get_execution`
 - ✨ Added `apps/agents/shared/` config + db helpers (consistent with PSP/scaffold-ai pattern)
 - ✨ Added `apps/infra/` CDK stack with Step Functions state machine + DynamoDB PlansTable
+- ✨ CloudWatch alarms (Lambda error rate, P99 duration, DynamoDB throttles, SFN execution failures)
+- ✨ AWS Budget alarm ($25/mo, 80% threshold) with SNS topic
+- ✨ CDK cost tags (`Project`, `Environment`, `ManagedBy`) on all resources
+- ✨ CDK snapshot + assertion tests (16 tests)
 - 🗑️ Removed `langchain-aws`, `langchain-core`, `anthropic` direct SDK
 
 ### v1.3.0 - React + Vite SPA Migration (Mar 2026)
