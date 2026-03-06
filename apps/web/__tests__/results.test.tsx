@@ -135,4 +135,32 @@ describe("ResultsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "New Plan" }));
     expect(mockNavigate).toHaveBeenCalledWith("/questionnaire");
   });
+
+  it("switches to security tab and shows checklist and risk assessment", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByRole("button", { name: "security" }));
+    expect(screen.getByText("Security Checklist")).toBeInTheDocument();
+    expect(screen.getByText("Enable encryption")).toBeInTheDocument();
+    expect(screen.getByText("Risk Assessment")).toBeInTheDocument();
+    expect(screen.getByText("Vendor lock-in")).toBeInTheDocument();
+  });
+
+  it("clicking architecture option selects it", async () => {
+    const planWithMultipleOptions = {
+      ...mockPlan,
+      architecture_options: [
+        { name: "Serverless", description: "desc", pros: [], cons: [], cost_estimate: "$10/mo", complexity: "Low" },
+        { name: "Containers", description: "ECS", pros: [], cons: [], cost_estimate: "$20/mo", complexity: "Medium" },
+      ],
+    };
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(planWithMultipleOptions));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByRole("button", { name: "architecture" }));
+    await waitFor(() => { expect(screen.getByText("Containers")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText("Containers").closest("div[class*='p-4']")!);
+    expect(screen.getByText("Selected")).toBeInTheDocument();
+  });
 });

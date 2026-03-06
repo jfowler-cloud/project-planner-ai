@@ -127,4 +127,27 @@ describe("PlanningPage", () => {
     await act(async () => { renderPage(); });
     await waitFor(() => { expect(window.sessionStorage.setItem).toHaveBeenCalled(); });
   });
+
+  it("SSE: shows Try Again button on fetch error", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockRejectedValueOnce(new Error("Connection error. Please try again."));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Try Again")).toBeInTheDocument(); });
+  });
+
+  it("SSE: clicking option selects it", async () => {
+    const opts = [
+      { name: "Serverless", description: "Lambda-based" },
+      { name: "Containers", description: "ECS-based" },
+    ];
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "options_generated", progress: 40, options: opts }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Containers")).toBeInTheDocument(); });
+    act(() => { screen.getByText("Containers").closest("div[class*='p-3']")?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  });
 });
