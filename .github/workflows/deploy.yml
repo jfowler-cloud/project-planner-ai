@@ -1,8 +1,12 @@
 name: Deploy
 
-# Disabled — deployment infrastructure not yet configured
+# Disabled — re-enable once deployment infrastructure is configured
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
 
 jobs:
   deploy:
