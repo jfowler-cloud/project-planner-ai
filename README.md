@@ -7,8 +7,8 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
-![Tests: 99](https://img.shields.io/badge/Tests-99%20passing-brightgreen?style=flat-square)
-![Coverage: 86%](https://img.shields.io/badge/Coverage-86%25-brightgreen?style=flat-square)
+![Tests: 109](https://img.shields.io/badge/Tests-109%20passing-brightgreen?style=flat-square)
+![Coverage: 92%](https://img.shields.io/badge/Coverage-92%25-brightgreen?style=flat-square)
 ![Step Functions](https://img.shields.io/badge/Step%20Functions-Agent%20Core-orange?style=flat-square)
 
 Describe your project in plain language — Project Planner AI refines your idea through an interactive chat, generates architecture options with security and operational best practices baked in, runs configurable critical reviews (security, cost, scalability), and produces a comprehensive plan. Hand it off to [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) for code generation and AWS deployment.
@@ -485,7 +485,7 @@ The primary integration path sends plan data via REST API with session IDs (no U
 |---|---|---|---|---|
 | **Purpose** | Resume optimization | Project planning | AWS architecture design | Career planning |
 | **AI** | Claude via Bedrock | Claude via Bedrock/API | Claude via Bedrock | Claude via Bedrock |
-| **Tests** | 212 (98% cov) | 99 (86% cov) | 133 (64% cov) | 142 (99% cov) |
+| **Tests** | 212 (98% cov) | 109 (92% cov) | 130 (96% cov) | 142 (99% cov) |
 | **Build time** | 3 days | 2 days | 1 day | 2 hours |
 
 ---
