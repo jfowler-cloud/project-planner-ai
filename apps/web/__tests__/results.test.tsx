@@ -271,4 +271,24 @@ describe("ResultsPage - additional coverage", () => {
     fireEvent.click(screen.getByText("Export as PDF"));
     expect(window.alert).toHaveBeenCalledWith("PDF export is not implemented yet.");
   });
+
+  it("shows Markdown export not implemented alert", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    window.alert = vi.fn();
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByText("Export as Markdown"));
+    expect(window.alert).toHaveBeenCalledWith("Markdown export is not implemented yet.");
+  });
+
+  it("selects option via radio button", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByRole("button", { name: "architecture" }));
+    await waitFor(() => screen.getByText("Serverless"));
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[0]);
+    expect(radios[0]).toBeChecked();
+  });
 });

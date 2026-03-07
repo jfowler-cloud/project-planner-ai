@@ -228,4 +228,61 @@ describe("PlanningPage - additional coverage", () => {
     fireEvent.click(screen.getByText("Try Again"));
     expect(mockNavigate).toHaveBeenCalledWith("/questionnaire");
   });
+
+  it("SSE: clicking option radio selects it", async () => {
+    const opts = [
+      { name: "Serverless", description: "Lambda-based" },
+      { name: "Containers", description: "ECS-based" },
+    ];
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "options_generated", progress: 40, options: opts }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Containers")).toBeInTheDocument(); });
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[1]);
+    expect(screen.getByText("✓ Selection saved")).toBeInTheDocument();
+  });
+
+  it("SSE: clicking option div selects it", async () => {
+    const opts = [{ name: "Monolith", description: "EC2-based" }];
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "options_generated", progress: 40, options: opts }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Monolith")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText("Monolith").closest("div[class*='p-3']")!);
+    expect(screen.getByText("✓ Selection saved")).toBeInTheDocument();
+  });
+
+  it("SSE: finalizing with no options does not auto-select", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "finalizing", progress: 90 }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Finalizing recommendation...")).toBeInTheDocument(); });
+    // No options rendered, so no "Selection saved" text
+    expect(screen.queryByText("✓ Selection saved")).not.toBeInTheDocument();
+  });
+
+  it("SSE: rate limit stats fetch failure is silent", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockRejectedValueOnce(new Error("rate limit fetch fail"))
+      .mockReturnValueOnce(new Promise(() => {}));
+    await act(async () => { renderPage(); });
+    expect(screen.getByText(/AI Planning in Progress/)).toBeInTheDocument();
+  });
+
+  it("SSE: shows singular 'plan' for 1 remaining", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 1 }) })
+      .mockReturnValueOnce(new Promise(() => {}));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText(/1 plan remaining this hour/)).toBeInTheDocument(); });
+  });
 });
