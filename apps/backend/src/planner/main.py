@@ -9,7 +9,6 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from .ai.client import invoke
 from .ai.pipeline import run_pipeline
 from .cache import make_cache_key, response_cache
 from .github.client import GitHubClient, get_github_token
@@ -58,7 +57,7 @@ def _get_client_ip(request: Request) -> str:
 
 def _check_bedrock() -> bool:
     """Try to instantiate the LLM client. Returns True if available."""
-    get_llm()
+    # Bedrock client check removed - using Strands invoke() directly
     return True
 
 

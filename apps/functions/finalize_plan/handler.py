@@ -1,5 +1,4 @@
 """Lambda: finalize plan, persist to DynamoDB."""
-import json
 import logging
 import os
 import sys
