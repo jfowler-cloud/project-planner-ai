@@ -92,7 +92,7 @@ jobs:
         working-directory: apps/web
       - uses: astral-sh/setup-uv@v4
       - run: uv python install 3.12
-      - run: cd apps/backend && uv sync --group dev && uv run pip-audit
+      - run: cd apps/backend && uv sync --extra dev && uv run pip-audit
 
       - name: pip-audit (functions)
         run: cd apps/functions && uv sync --group dev && uv run pip-audit
