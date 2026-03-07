@@ -164,3 +164,111 @@ describe("ResultsPage", () => {
     expect(screen.getByText("Selected")).toBeInTheDocument();
   });
 });
+
+describe("ResultsPage - additional coverage", () => {
+  it("shows token modal when Generate GitHub Repository clicked without token", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText("Generate GitHub Repository"));
+    await waitFor(() => { expect(screen.getByText("GitHub Personal Access Token Required")).toBeInTheDocument(); });
+  });
+
+  it("closes token modal on Cancel", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByText("Generate GitHub Repository"));
+    await waitFor(() => screen.getByText("GitHub Personal Access Token Required"));
+    fireEvent.click(screen.getByText("Cancel"));
+    await waitFor(() => { expect(screen.queryByText("GitHub Personal Access Token Required")).not.toBeInTheDocument(); });
+  });
+
+  it("shows cost breakdown values on costs tab", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByRole("button", { name: "costs" }));
+    expect(screen.getByText("$11")).toBeInTheDocument();
+    expect(screen.getByText("$132")).toBeInTheDocument();
+  });
+
+  it("shows timeline and technology stack on overview", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    expect(screen.getByText("2 weeks")).toBeInTheDocument();
+    expect(screen.getByText("React")).toBeInTheDocument();
+    expect(screen.getByText("Lambda")).toBeInTheDocument();
+  });
+
+  it("shows badges for timeline and budget", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    expect(screen.getByText("1 week")).toBeInTheDocument();
+    expect(screen.getByText("$100")).toBeInTheDocument();
+  });
+
+  it("shows pros and cons on architecture tab", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByRole("button", { name: "architecture" }));
+    expect(screen.getByText(/cheap/)).toBeInTheDocument();
+    expect(screen.getByText(/cold starts/)).toBeInTheDocument();
+  });
+
+  it("stores selectedOptionIndex in sessionStorage when option clicked", async () => {
+    const planWithMultipleOptions = {
+      ...mockPlan,
+      architecture_options: [
+        { name: "Serverless", description: "desc", pros: [], cons: [], cost_estimate: "$10/mo", complexity: "Low" },
+        { name: "Containers", description: "ECS", pros: [], cons: [], cost_estimate: "$20/mo", complexity: "Medium" },
+      ],
+    };
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(planWithMultipleOptions));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByRole("button", { name: "architecture" }));
+    await waitFor(() => screen.getByText("Containers"));
+    fireEvent.click(screen.getByText("Containers").closest("div[class*='p-4']")!);
+    expect(window.sessionStorage.setItem).toHaveBeenCalled();
+  });
+
+  it("calls generate-repo API with token", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ({ repo_url: "https://github.com/test/repo" }) });
+    window.alert = vi.fn();
+    window.open = vi.fn();
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByText("Generate GitHub Repository"));
+    await waitFor(() => screen.getByText("GitHub Personal Access Token Required"));
+    fireEvent.change(screen.getByPlaceholderText("ghp_xxxxxxxxxxxx"), { target: { value: "ghp_test123" } });
+    fireEvent.click(screen.getByText("Continue"));
+    await waitFor(() => { expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/v1/generate-repo"), expect.any(Object)); });
+  });
+
+  it("shows error when generate-repo fails", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, json: async () => ({ detail: "Repo creation failed" }) });
+    window.alert = vi.fn();
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByText("Generate GitHub Repository"));
+    await waitFor(() => screen.getByText("GitHub Personal Access Token Required"));
+    fireEvent.change(screen.getByPlaceholderText("ghp_xxxxxxxxxxxx"), { target: { value: "ghp_test123" } });
+    fireEvent.click(screen.getByText("Continue"));
+    await waitFor(() => { expect(window.alert).toHaveBeenCalledWith(expect.stringContaining("Repo creation failed")); });
+  });
+
+  it("shows PDF export not implemented alert", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    window.alert = vi.fn();
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByText("Export as PDF"));
+    expect(window.alert).toHaveBeenCalledWith("PDF export is not implemented yet.");
+  });
+});

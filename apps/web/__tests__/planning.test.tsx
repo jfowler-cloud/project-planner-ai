@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { vi, beforeEach, afterEach, describe, it, expect } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
@@ -149,5 +149,83 @@ describe("PlanningPage", () => {
     await act(async () => { renderPage(); });
     await waitFor(() => { expect(screen.getByText("Containers")).toBeInTheDocument(); });
     act(() => { screen.getByText("Containers").closest("div[class*='p-3']")?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  });
+});
+
+describe("PlanningPage - additional coverage", () => {
+  it("SSE: shows rate limit stats", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 3 }) })
+      .mockReturnValueOnce(new Promise(() => {}));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText(/3 plans remaining this hour/)).toBeInTheDocument(); });
+  });
+
+  it("SSE: shows generating_options status", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "generating_options", progress: 25 }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Generating architecture options...")).toBeInTheDocument(); });
+  });
+
+  it("SSE: shows reviewing status with iteration", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "reviewing", progress: 60, iteration: 2, total: 3 }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText(/Performing critical review 2\/3/)).toBeInTheDocument(); });
+  });
+
+  it("SSE: shows finalizing status", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "finalizing", progress: 90 }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Finalizing recommendation...")).toBeInTheDocument(); });
+  });
+
+  it("SSE: handles cached plan", async () => {
+    const plan = { project_id: "cached-123" };
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "cached", progress: 100, plan }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Found cached plan!")).toBeInTheDocument(); });
+    await waitFor(() => { expect(window.sessionStorage.setItem).toHaveBeenCalled(); }, { timeout: 2000 });
+  });
+
+  it("SSE: handles HTTP error response", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce({ ok: false, status: 429 });
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("Try Again")).toBeInTheDocument(); });
+  });
+
+  it("shows progress checkmarks for completed steps", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockResolvedValueOnce(mockSSEStream([{ status: "analyzing", progress: 50 }]));
+    await act(async () => { renderPage(); });
+    await waitFor(() => { expect(screen.getByText("50%")).toBeInTheDocument(); });
+  });
+
+  it("Try Again navigates to questionnaire", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ hour_remaining: 5 }) })
+      .mockRejectedValueOnce(new Error("fail"));
+    await act(async () => { renderPage(); });
+    await waitFor(() => screen.getByText("Try Again"));
+    fireEvent.click(screen.getByText("Try Again"));
+    expect(mockNavigate).toHaveBeenCalledWith("/questionnaire");
   });
 });

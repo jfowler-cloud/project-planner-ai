@@ -80,3 +80,68 @@ describe("QuestionnairePage", () => {
     expect(screen.getByText("Project Basics")).toBeInTheDocument();
   });
 });
+
+describe("QuestionnairePage - Steps 2 & 3", () => {
+  it("navigates from step 2 to step 3", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByPlaceholderText("My Awesome Project"), "Test Project");
+    await user.type(screen.getByPlaceholderText("What does your project do?"), "A test project description that is long enough");
+    await user.type(screen.getByPlaceholderText("Who will use this?"), "Developers");
+    await act(async () => { await user.click(screen.getByText("Next")); });
+    await waitFor(() => { expect(screen.getByText("Technical Requirements")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText("Next"));
+    expect(screen.getByText("Technology Preferences")).toBeInTheDocument();
+  });
+
+  it("navigating back from step 3 returns to step 2", () => {
+    renderPage();
+    fireEvent.click(screen.getByText("🚀 Demo"));
+    expect(screen.getByText("Technology Preferences")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Back"));
+    expect(screen.getByText("Technical Requirements")).toBeInTheDocument();
+  });
+
+  it("Generate Plan stores payload and navigates", () => {
+    renderPage();
+    fireEvent.click(screen.getByText("🚀 Demo"));
+    fireEvent.click(screen.getByText("Generate Plan"));
+    expect(window.sessionStorage.setItem).toHaveBeenCalledWith("projectRequest", expect.any(String));
+    expect(mockNavigate).toHaveBeenCalledWith("/planning");
+  });
+
+  it("renders review count slider on step 3", () => {
+    renderPage();
+    fireEvent.click(screen.getByText("🚀 Demo"));
+    expect(screen.getByText("Critical Review Passes")).toBeInTheDocument();
+  });
+
+  it("changes review count via slider", () => {
+    renderPage();
+    fireEvent.click(screen.getByText("🚀 Demo"));
+    const slider = screen.getByRole("slider");
+    fireEvent.change(slider, { target: { value: "7" } });
+    expect(screen.getByText("7")).toBeInTheDocument();
+  });
+
+  it("renders authentication checkbox on step 2", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByPlaceholderText("My Awesome Project"), "Test Project");
+    await user.type(screen.getByPlaceholderText("What does your project do?"), "A test project description that is long enough");
+    await user.type(screen.getByPlaceholderText("Who will use this?"), "Developers");
+    await act(async () => { await user.click(screen.getByText("Next")); });
+    await waitFor(() => { expect(screen.getByText("Authentication Required")).toBeInTheDocument(); });
+  });
+
+  it("renders select dropdowns on step 2", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(screen.getByPlaceholderText("My Awesome Project"), "Test Project");
+    await user.type(screen.getByPlaceholderText("What does your project do?"), "A test project description that is long enough");
+    await user.type(screen.getByPlaceholderText("Who will use this?"), "Developers");
+    await act(async () => { await user.click(screen.getByText("Next")); });
+    await waitFor(() => { expect(screen.getByText("Expected Users")).toBeInTheDocument(); });
+    expect(screen.getByText("Growth Rate")).toBeInTheDocument();
+  });
+});
