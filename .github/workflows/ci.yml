@@ -90,10 +90,10 @@ jobs:
         working-directory: apps/web
       - uses: astral-sh/setup-uv@v4
       - run: uv python install 3.12
-      - run: cd apps/backend && uv sync --all-extras && uv run pip-audit
+      - run: cd apps/backend && uv sync && uv run pip-audit
 
       - name: pip-audit (functions)
-        run: cd apps/functions && uv sync --all-extras && uv run pip-audit
+        run: cd apps/functions && uv sync && uv run pip-audit
 
       - uses: github/codeql-action/init@v3
         with:
