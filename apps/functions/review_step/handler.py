@@ -16,7 +16,27 @@ logger = Logger()
 tracer = Tracer()
 metrics = Metrics()
 
-SYSTEM_PROMPT = """You are a senior software architect performing a focused review.
+PORTFOLIO_STANDARDS = """
+Portfolio Architecture Standards (MUST follow):
+- Mono-repo: apps/ with subdirectories agents, functions, infra, web
+- Frontend: React 19 + Vite + AWS Cloudscape, dark mode default, red accent #e8001c
+- Backend: AWS Lambda + aws-lambda-powertools (Logger/Tracer/Metrics), Python 3.12+, uv
+- Database: DynamoDB (on-demand, PITR, RemovalPolicy.RETAIN)
+- Auth: Cognito User Pool + Identity Pool (NO API Gateway)
+- Infra: CDK v2 TypeScript, S3 + CloudFront hosting
+- AI: Strands SDK + Bedrock, agents in CodeBuild
+- Testing: Vitest 95%+, pytest+moto 95%+, Playwright E2E, Jest CDK snapshots
+- CI: GitHub Actions 5-job (frontend, backend, agents, infra, security)
+- Config: config.json source of truth, CLAUDE.md, dev.sh, scripts/setup-env.sh
+- All stateful resources: RemovalPolicy.RETAIN in production
+"""
+
+SYSTEM_PROMPT = f"""You are a senior software architect performing a focused review.
+You enforce portfolio architecture standards and flag any deviations.
+All reviews MUST check conformance with the following standards:
+
+{PORTFOLIO_STANDARDS}
+
 Always respond with valid JSON only."""
 
 REVIEW_PROMPT = """Review iteration {iteration}/10 — Category: {category}
@@ -29,6 +49,11 @@ Current recommended stack:
 
 Previous findings:
 {previous_findings}
+
+As part of this review, check whether the plan follows the portfolio standards:
+mono-repo structure, Cloudscape UI, Lambda Powertools, DynamoDB, Cognito auth,
+CDK v2 infra, S3 + CloudFront hosting, 95%+ test coverage targets, and GitHub
+Actions CI. Flag any deviations as findings and recommend corrections.
 
 Respond with JSON:
 {{

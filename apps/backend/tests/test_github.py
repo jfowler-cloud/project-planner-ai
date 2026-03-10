@@ -56,11 +56,8 @@ def sample_plan():
 
 def test_dev_script_format():
     """Test dev script contains required elements"""
-    assert "docker run" in DEV_SCRIPT
-    assert "redis" in DEV_SCRIPT
-    assert "uv run python" in DEV_SCRIPT
     assert "npm run dev" in DEV_SCRIPT
-    assert "trap" in DEV_SCRIPT
+    assert "wait" in DEV_SCRIPT
 
 
 @pytest.mark.asyncio

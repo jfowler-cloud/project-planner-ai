@@ -42,7 +42,7 @@ describe('ScaffoldIntegration', () => {
   it('closes panel when X button clicked', () => {
     render(<ScaffoldIntegration />);
     fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
-    const closeBtn = screen.getAllByRole('button').find(b => b.className.includes('text-gray-400'));
+    const closeBtn = screen.getAllByRole('button').find(b => b.className.includes('text-zinc-400'));
     fireEvent.click(closeBtn!);
     // Panel should be hidden (translate-x-full)
     expect(screen.queryByText('Open in Scaffold AI →')).toBeInTheDocument(); // still in DOM but hidden

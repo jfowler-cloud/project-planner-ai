@@ -31,7 +31,7 @@ async def run_pipeline(
     Each event: {"step": int, "total": int, "message": str, "partial": dict|None, "done": bool}
     Final event has done=True and partial contains the full PlanOutput dict.
     """
-    total_steps = 12  # initial plan + 10 reviews + finalize
+    total_steps = 13  # initial plan + 11 reviews + finalize
     q_json = questionnaire.model_dump_json(indent=2)
 
     # Step 1: Generate initial plan
@@ -69,7 +69,7 @@ async def run_pipeline(
         yield _sse({
             "step": step_num,
             "total": total_steps,
-            "message": f"Review {i}/10: {category.title()}...",
+            "message": f"Review {i}/{len(REVIEW_CATEGORIES)}: {category.title()}...",
             "partial": None,
             "done": False,
         })
@@ -125,7 +125,7 @@ async def run_pipeline(
         })
 
     # Step 12: Finalize
-    yield _sse({"step": 12, "total": total_steps, "message": "Finalizing plan...", "partial": None, "done": False})
+    yield _sse({"step": total_steps, "total": total_steps, "message": "Finalizing plan...", "partial": None, "done": False})
 
     plan = PlanOutput(
         plan_id=str(uuid.uuid4()),
@@ -137,7 +137,7 @@ async def run_pipeline(
     )
 
     yield _sse({
-        "step": 12,
+        "step": total_steps,
         "total": total_steps,
         "message": "Plan complete.",
         "partial": plan.model_dump(mode="json"),

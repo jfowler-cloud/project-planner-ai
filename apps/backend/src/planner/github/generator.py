@@ -4,112 +4,112 @@ from ..validation import validate_repo_name
 from .client import GitHubClient
 
 DEV_SCRIPT = """#!/bin/bash
-
-# Start Redis
-docker run -d --rm --name {project_name}-redis -p 6379:6379 redis:alpine 2>/dev/null || echo "Redis already running"
-
-# Start backend
-cd apps/backend
-uv run python src/main.py &
-BACKEND_PID=$!
-
 # Start frontend
-cd ../web
-npm run dev &
-FRONTEND_PID=$!
-
-# Cleanup on exit
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; docker stop {project_name}-redis 2>/dev/null" EXIT
-
-echo "🚀 Backend: http://localhost:8000"
-echo "🚀 Frontend: http://localhost:3000"
-echo "Press Ctrl+C to stop all services"
-
+cd apps/web && npm run dev &
+# Start backend (if applicable)
+# cd apps/backend && uv run uvicorn ...
+echo "Frontend: http://localhost:3000"
 wait
 """
 
 DEPLOY_SCRIPT = """#!/bin/bash
 set -e
-
 TIER=${{1:-testing}}
-
-case $TIER in
-  testing)
-    echo "🧪 Deploying to TESTING environment..."
-    DOMAIN="testing.{domain}"
-    ;;
-  optimized)
-    echo "⚡ Deploying to OPTIMIZED environment..."
-    DOMAIN="optimized.{domain}"
-    ;;
-  premium)
-    echo "💎 Deploying to PREMIUM environment..."
-    DOMAIN="{domain}"
-    ;;
-  *)
-    echo "Usage: ./deploy.sh [testing|optimized|premium]"
-    exit 1
-    ;;
-esac
-
-echo "Domain: $DOMAIN"
-
-# Deploy frontend to Vercel
-cd apps/web
-vercel --prod --yes --env NEXT_PUBLIC_API_URL=https://api.$DOMAIN
-
-# Deploy backend (example for AWS Lambda)
-cd ../backend
-# Add your deployment commands here
-
-echo "✅ Deployed to $TIER: https://$DOMAIN"
+echo "Deploying with tier: $TIER"
+cd apps/infra && npx cdk deploy --all -c deploymentTier=$TIER --require-approval never
+echo "Deploying frontend..."
+cd ../..
+./deploy-frontend.sh
+echo "Done"
 """
 
-VERCEL_JSON = """{{
-  "version": 2,
-  "builds": [
-    {{
-      "src": "package.json",
-      "use": "@vercel/next"
-    }}
-  ],
-  "env": {{
-    "NEXT_PUBLIC_API_URL": "https://api.{domain}"
-  }}
-}}
+DEPLOY_FRONTEND_SCRIPT = """#!/bin/bash
+set -e
+cd apps/web && npm run build
+BUCKET=$(aws cloudformation describe-stacks --stack-name {stack_prefix}-Database --query "Outputs[?OutputKey=='HostingBucketName'].OutputValue" --output text)
+DIST_ID=$(aws cloudformation describe-stacks --stack-name {stack_prefix}-Database --query "Outputs[?OutputKey=='DistributionId'].OutputValue" --output text)
+aws s3 sync dist/ s3://$BUCKET --delete
+aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
+echo "Frontend deployed"
 """
 
-GITHUB_WORKFLOW = """name: Deploy
-
+GITHUB_WORKFLOW = """name: CI
 on:
   push:
-    branches:
-      - main
-      - develop
-      - testing
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  deploy:
+  frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {{ node-version: '22' }}
+      - run: cd apps/web && npm ci
+      - run: cd apps/web && npx tsc --noEmit
+      - run: cd apps/web && npm run test:coverage
 
-      - name: Determine environment
-        id: env
-        run: |
-          if [[ "${{{{ github.ref }}}}" == "refs/heads/main" ]]; then
-            echo "tier=premium" >> $GITHUB_OUTPUT
-          elif [[ "${{{{ github.ref }}}}" == "refs/heads/develop" ]]; then
-            echo "tier=optimized" >> $GITHUB_OUTPUT
-          else
-            echo "tier=testing" >> $GITHUB_OUTPUT
-          fi
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: cd apps/functions && uv sync --frozen
+      - run: cd apps/functions && uv run ruff check .
+      - run: cd apps/functions && uv run pytest tests/ --cov=. --cov-report=json -q
 
-      - name: Deploy
-        run: ./deploy.sh ${{{{ steps.env.outputs.tier }}}}
-        env:
-          VERCEL_TOKEN: ${{{{ secrets.VERCEL_TOKEN }}}}
-          ANTHROPIC_API_KEY: ${{{{ secrets.ANTHROPIC_API_KEY }}}}
+  agents:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: cd apps/agents && uv sync --frozen
+      - run: cd apps/agents && uv run ruff check .
+      - run: cd apps/agents && uv run pytest tests/ --cov=. --cov-report=json -q
+
+  infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {{ node-version: '22' }}
+      - run: cd apps/infra && npm ci
+      - run: cd apps/infra && npx tsc --noEmit
+      - run: cd apps/infra && npm test
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {{ node-version: '22' }}
+      - run: cd apps/web && npm ci && npm audit --audit-level=high
+      - uses: astral-sh/setup-uv@v5
+      - run: cd apps/functions && uv sync --frozen && uv run pip-audit
+      - run: cd apps/agents && uv sync --frozen && uv run pip-audit
+"""
+
+CLAUDE_MD_TEMPLATE = """# {project_name} -- AI Assistant Context
+
+## Project Overview
+{description}
+
+## Mono-Repo Layout
+apps/agents/ - AI agents (Strands SDK, Python)
+apps/functions/ - Lambda handlers (Python, uv)
+apps/infra/ - CDK v2 (TypeScript)
+apps/web/ - React 19 + Vite + Cloudscape
+
+## Commands
+cd apps/web && npm run dev          # Frontend dev server
+cd apps/web && npm run test:coverage # Frontend tests
+cd apps/functions && uv run pytest   # Backend tests
+cd apps/infra && npx cdk deploy --all # Deploy infrastructure
+
+## Standards
+Dark mode default, red accent #e8001c, Cloudscape UI
 """
 
 
@@ -119,7 +119,7 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
 
     # Create repository - sanitize name to prevent invalid GitHub repo names
     repo_name = validate_repo_name(plan.basics.name)
-    domain = f"{repo_name}.com"
+    stack_prefix = repo_name.title().replace("-", "")
 
     repo = await client.create_repository(
         name=repo_name,
@@ -133,7 +133,7 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
     await client.create_file(
         repo_full_name,
         "dev.sh",
-        DEV_SCRIPT.format(project_name=repo_name),
+        DEV_SCRIPT,
         "Add dev script"
     )
 
@@ -141,24 +141,24 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
     await client.create_file(
         repo_full_name,
         "deploy.sh",
-        DEPLOY_SCRIPT.format(domain=domain),
+        DEPLOY_SCRIPT,
         "Add deployment script"
     )
 
-    # Create vercel.json
+    # Create deploy-frontend.sh
     await client.create_file(
         repo_full_name,
-        "apps/web/vercel.json",
-        VERCEL_JSON.format(domain=domain),
-        "Add Vercel config"
+        "deploy-frontend.sh",
+        DEPLOY_FRONTEND_SCRIPT.format(stack_prefix=stack_prefix),
+        "Add frontend deployment script"
     )
 
     # Create GitHub workflow
     await client.create_file(
         repo_full_name,
-        ".github/workflows/deploy.yml",
+        ".github/workflows/ci.yml",
         GITHUB_WORKFLOW,
-        "Add deployment workflow"
+        "Add CI workflow"
     )
 
     # Create README
@@ -174,26 +174,15 @@ async def generate_repository(plan: ProjectPlan, github_token: str) -> str:
 
 ## Deployment
 
-### Environments
-
-- **Testing**: `testing.{domain}` - Branch: `testing`
-- **Optimized**: `optimized.{domain}` - Branch: `develop`
-- **Premium**: `{domain}` - Branch: `main`
-
-### Deploy
-
 ```bash
 # Deploy to testing
 ./deploy.sh testing
 
-# Deploy to optimized
-./deploy.sh optimized
-
-# Deploy to premium
-./deploy.sh premium
+# Deploy to production
+./deploy.sh production
 ```
 
-Or push to the respective branch for automatic deployment via GitHub Actions.
+Uses CDK for infrastructure deployment and S3/CloudFront for frontend hosting.
 
 ## Architecture
 
@@ -280,7 +269,7 @@ async def generate_repo(client, plan: PlanOutput, request) -> RepoResult:
     plan : PlanOutput
         The generated project plan.
     request : RepoRequest
-        Repository creation options (name, private, include_sop, …).
+        Repository creation options (name, private, include_sop, ...).
     """
     repo_name = validate_repo_name(request.repo_name)
     description = request.description or (
@@ -306,11 +295,17 @@ async def generate_repo(client, plan: PlanOutput, request) -> RepoResult:
     await _add("README.md", readme, "Add README")
 
     # .gitignore
-    await _add(".gitignore", "*.pyc\n__pycache__/\n.env\n.venv/\nnode_modules/\n.next/\n", "Add .gitignore")
+    await _add(".gitignore", "*.pyc\n__pycache__/\n.env\n.venv/\nnode_modules/\ncdk.out/\n.cdk.staging/\ndist/\n", "Add .gitignore")
 
-    # CI workflow
-    ci = "name: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo 'Add your test commands here'\n"
-    await _add(".github/workflows/ci.yml", ci, "Add CI workflow")
+    # CI workflow (5-job portfolio standard)
+    await _add(".github/workflows/ci.yml", GITHUB_WORKFLOW, "Add CI workflow")
+
+    # CLAUDE.md
+    claude_md = CLAUDE_MD_TEMPLATE.format(
+        project_name=repo_name,
+        description=description,
+    )
+    await _add("CLAUDE.md", claude_md, "Add CLAUDE.md")
 
     # Optional SOP
     if request.include_sop:

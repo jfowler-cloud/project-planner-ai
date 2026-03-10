@@ -103,7 +103,7 @@ async def test_e2e_happy_path():
     assert "text/event-stream" in response.headers["content-type"]
 
     events = _parse_sse(response.content)
-    assert len(events) >= 12, f"Expected ≥12 SSE events, got {len(events)}"
+    assert len(events) >= 13, f"Expected ≥13 SSE events, got {len(events)}"
 
     # First event: initial plan generation
     assert events[0]["step"] == 1
@@ -118,7 +118,7 @@ async def test_e2e_happy_path():
     assert plan["plan_id"]
     assert plan["recommended"]["name"] == "Next.js + FastAPI + PostgreSQL"
     assert len(plan["alternatives"]) >= 1
-    assert len(plan["review_findings"]) == 10
+    assert len(plan["review_findings"]) == 11
     assert plan["created_at"]
 
 

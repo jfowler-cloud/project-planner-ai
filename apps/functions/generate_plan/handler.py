@@ -16,13 +16,40 @@ logger = Logger()
 tracer = Tracer()
 metrics = Metrics()
 
-SYSTEM_PROMPT = """You are a senior software architect helping developers plan projects.
+PORTFOLIO_STANDARDS = """
+Portfolio Architecture Standards (MUST follow):
+- Mono-repo: apps/ with subdirectories agents, functions, infra, web
+- Frontend: React 19 + Vite + AWS Cloudscape, dark mode default, red accent #e8001c
+- Backend: AWS Lambda + aws-lambda-powertools (Logger/Tracer/Metrics), Python 3.12+, uv
+- Database: DynamoDB (on-demand, PITR, RemovalPolicy.RETAIN)
+- Auth: Cognito User Pool + Identity Pool (NO API Gateway)
+- Infra: CDK v2 TypeScript, S3 + CloudFront hosting
+- AI: Strands SDK + Bedrock, agents in CodeBuild
+- Testing: Vitest 95%+, pytest+moto 95%+, Playwright E2E, Jest CDK snapshots
+- CI: GitHub Actions 5-job (frontend, backend, agents, infra, security)
+- Config: config.json source of truth, CLAUDE.md, dev.sh, scripts/setup-env.sh
+- All stateful resources: RemovalPolicy.RETAIN in production
+"""
+
+SYSTEM_PROMPT = f"""You are a senior software architect who follows specific portfolio standards.
+You help developers plan projects that conform to the established architecture patterns.
 Give honest, practical advice tailored to the project's scale, budget, and timeline.
+All recommendations MUST align with the following standards:
+
+{PORTFOLIO_STANDARDS}
+
 Always respond with valid JSON only."""
 
 INITIAL_PLAN_PROMPT = """Generate an initial project plan for:
 
 {questionnaire}
+
+The plan MUST follow the portfolio mono-repo structure (apps/agents, apps/functions,
+apps/infra, apps/web),
+use CDK v2 (TypeScript) for infrastructure, AWS Cloudscape for UI, Lambda Powertools for
+backend functions, DynamoDB for data, Cognito for auth, and S3 + CloudFront for hosting.
+Include Strands SDK + Bedrock for any AI features. Testing must target 95%+ coverage
+using Vitest, pytest+moto, Playwright E2E, and Jest CDK snapshots.
 
 Respond with JSON:
 {{
@@ -70,14 +97,14 @@ def handler(event: dict, context=None) -> dict:
         logger.exception("Initial plan generation failed: %s", e)
         result = {
             "recommended": {
-                "name": "FastAPI + React + DynamoDB",
-                "stack": {"frontend": "React", "backend": "FastAPI", "database": "DynamoDB", "infra": "AWS Lambda", "auth": "Cognito"},
-                "pros": ["Serverless", "Cost-effective"],
+                "name": "Cloudscape + Lambda + DynamoDB",
+                "stack": {"frontend": "React 19 + Vite + Cloudscape", "backend": "AWS Lambda + Powertools", "database": "DynamoDB", "infra": "CDK v2 (TypeScript)", "auth": "Cognito", "hosting": "S3 + CloudFront"},
+                "pros": ["Serverless", "Cost-effective", "Portfolio-compliant"],
                 "cons": ["Cold starts"],
                 "monthly_cost_estimate": "$5-20/month",
                 "complexity": "medium",
                 "best_for": "General purpose web application",
-                "mermaid_diagram": "graph TD\n  A[React] --> B[FastAPI]\n  B --> C[DynamoDB]",
+                "mermaid_diagram": "graph TD\n  A[Cloudscape SPA] --> B[Lambda + Powertools]\n  B --> C[DynamoDB]\n  D[Cognito] --> A\n  E[CloudFront] --> A",
             },
             "alternatives": [],
         }

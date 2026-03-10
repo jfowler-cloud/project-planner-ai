@@ -49,14 +49,14 @@ async def test_pipeline_yields_sse_events(questionnaire):
         # First call: initial plan; subsequent calls: review iterations
         mock_invoke.side_effect = [
             json.dumps(MOCK_INITIAL_PLAN),
-            *[json.dumps(MOCK_REVIEW) for _ in range(10)],
+            *[json.dumps(MOCK_REVIEW) for _ in range(11)],
         ]
 
         events = []
         async for event in run_pipeline(questionnaire):
             events.append(event)
 
-        assert len(events) >= 12  # 1 initial + 10 reviews + 1 final
+        assert len(events) >= 13  # 1 initial + 11 reviews + 1 final
         # All events are SSE format
         for e in events:
             assert e.startswith("data: ")
@@ -70,7 +70,7 @@ async def test_pipeline_final_event_has_plan(questionnaire):
     with patch("planner.ai.pipeline.invoke") as mock_invoke:
         mock_invoke.side_effect = [
             json.dumps(MOCK_INITIAL_PLAN),
-            *[json.dumps(MOCK_REVIEW) for _ in range(10)],
+            *[json.dumps(MOCK_REVIEW) for _ in range(11)],
         ]
 
         final = None
@@ -107,7 +107,7 @@ async def test_pipeline_applies_stack_update(questionnaire):
         mock_invoke.side_effect = [
             json.dumps(MOCK_INITIAL_PLAN),
             json.dumps(review_with_update),
-            *[json.dumps(MOCK_REVIEW) for _ in range(9)],
+            *[json.dumps(MOCK_REVIEW) for _ in range(10)],
         ]
 
         final = None

@@ -33,6 +33,18 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
         uptime: projectPlan.technical.uptime,
         data_size: projectPlan.technical.data_size,
       },
+      portfolio_standards: {
+        structure: "mono-repo: apps/{agents,functions,infra,web}",
+        frontend: "React 19 + Vite + Cloudscape, dark mode, red accent #e8001c",
+        backend: "AWS Lambda + aws-lambda-powertools, Python 3.12+, uv",
+        database: "DynamoDB (on-demand, PITR, RemovalPolicy.RETAIN)",
+        auth: "Cognito User Pool + Identity Pool (no API Gateway)",
+        infra: "CDK v2 TypeScript, S3 + CloudFront hosting",
+        ai: "Strands SDK + Bedrock (Claude), agents in CodeBuild",
+        testing: "Vitest 95%+, pytest+moto 95%+, Playwright E2E, Jest CDK",
+        ci: "GitHub Actions: frontend, backend, agents, infra, security",
+        required_files: ["config.json", "CLAUDE.md", "dev.sh", "scripts/setup-env.sh", "CHANGELOG.md", "RUNBOOK.md"],
+      },
       full_plan: projectPlan,
     };
 
@@ -48,7 +60,7 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
       alert("Plan sent to Scaffold AI successfully!");
     } catch (error) {
       console.error("Error sending plan to Scaffold AI:", error);
-      const prompt = `I have a project plan from Project Planner AI:\n\nProject: ${projectPlan.basics.name}\nDescription: ${projectPlan.basics.description}\nArchitecture: ${selectedArchitecture}\nTech Stack: ${Object.entries(selectedStack).map(([k, v]) => `${k}: ${v}`).join(", ")}\n\nPlease help me build this architecture on AWS.`;
+      const prompt = `I have a project plan from Project Planner AI:\n\nProject: ${projectPlan.basics.name}\nDescription: ${projectPlan.basics.description}\nArchitecture: ${selectedArchitecture}\nTech Stack: ${Object.entries(selectedStack).map(([k, v]) => `${k}: ${v}`).join(", ")}\n\nPlease help me build this architecture following these portfolio standards:\n- Mono-repo: apps/{agents,functions,infra,web}\n- Frontend: React 19 + Vite + Cloudscape (dark mode, red accent #e8001c)\n- Backend: AWS Lambda + Powertools, Python 3.12+, uv\n- Infra: CDK v2 TypeScript, DynamoDB, Cognito, S3+CloudFront\n- Testing: Vitest 95%+, pytest+moto 95%+, Playwright E2E\n- CI: GitHub Actions 5-job pipeline`;
       window.open(`${SCAFFOLD_URL}?from=planner&prompt=${encodeURIComponent(prompt)}`, "_blank");
       navigator.clipboard.writeText(prompt).catch(() => {});
       alert("Using fallback method. Plan data copied to clipboard!");
@@ -67,13 +79,13 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
         </svg>
       </button>
 
-      <div className={`fixed right-0 top-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 z-40 ${isOpen ? "translate-x-0" : "translate-x-full"}`}>
+      <div className={`fixed right-0 top-0 h-full w-80 bg-zinc-900 shadow-2xl transform transition-transform duration-300 z-40 ${isOpen ? "translate-x-0" : "translate-x-full"}`}>
         <div className="p-6 h-full flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
               Scaffold AI
             </h3>
-            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600">
+            <button onClick={() => setIsOpen(false)} className="text-zinc-400 hover:text-zinc-200">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -82,20 +94,20 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
 
           <div className="flex-1 overflow-y-auto">
             <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-4">Take your plan to the next level with Scaffold AI</p>
+              <p className="text-sm text-zinc-400 mb-4">Take your plan to the next level with Scaffold AI</p>
               <div className="space-y-3 mb-6">
                 {["Generate starter code", "Run security checks", "Create infrastructure as code", "Iterate on architecture quickly", "Deploy to AWS"].map((item) => (
                   <div key={item} className="flex items-start">
-                    <span className="text-green-500 mr-2">✓</span>
-                    <span className="text-sm">{item}</span>
+                    <span className="text-green-400 mr-2">✓</span>
+                    <span className="text-sm text-zinc-200">{item}</span>
                   </div>
                 ))}
               </div>
 
               {projectPlan ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <div className="text-sm font-medium text-blue-900 mb-2">Ready to export:</div>
-                  <div className="text-xs text-blue-700 mb-3">
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 mb-4">
+                  <div className="text-sm font-medium text-zinc-200 mb-2">Ready to export:</div>
+                  <div className="text-xs text-zinc-400 mb-3">
                     <div>• {projectPlan.basics.name}</div>
                     <div>• {projectPlan.recommended_option}</div>
                     <div>• {Object.keys(projectPlan.technology_stack).length} technologies</div>
@@ -105,14 +117,14 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
                       const desc = `${projectPlan.basics.description}\n\nArchitecture: ${projectPlan.recommended_option}\n\nTech Stack: ${Object.entries(projectPlan.technology_stack).map(([k, v]) => `${k}: ${v}`).join(", ")}`;
                       navigator.clipboard.writeText(desc).then(() => alert("Description copied to clipboard!"));
                     }}
-                    className="w-full px-3 py-2 text-sm border border-blue-300 text-blue-700 rounded hover:bg-blue-100 transition-all mb-2"
+                    className="w-full px-3 py-2 text-sm border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 transition-all mb-2"
                   >
                     📋 Copy Description
                   </button>
                 </div>
               ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-gray-600">Complete your plan first to export to Scaffold AI</p>
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-zinc-400">Complete your plan first to export to Scaffold AI</p>
                 </div>
               )}
 
@@ -126,7 +138,7 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
             </div>
 
             <div className="border-t pt-6">
-              <h4 className="font-semibold mb-3 text-sm">Workflow</h4>
+              <h4 className="font-semibold mb-3 text-sm text-zinc-200">Workflow</h4>
               <div className="space-y-3">
                 {[
                   { n: 1, label: "Plan", sub: "Project Planner AI", color: "blue" },
@@ -134,12 +146,12 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
                   { n: 3, label: "Deploy", sub: "AWS", color: "green" },
                 ].map(({ n, label, sub, color }, i) => (
                   <div key={n}>
-                    {i > 0 && <div className="ml-4 border-l-2 border-gray-200 h-4 mb-3" />}
+                    {i > 0 && <div className="ml-4 border-l-2 border-zinc-700 h-4 mb-3" />}
                     <div className="flex items-center text-sm">
-                      <div className={`w-8 h-8 rounded-full bg-${color}-100 text-${color}-600 flex items-center justify-center font-bold mr-3 flex-shrink-0`}>{n}</div>
+                      <div className={`w-8 h-8 rounded-full bg-${color}-900 text-${color}-400 flex items-center justify-center font-bold mr-3 flex-shrink-0`}>{n}</div>
                       <div>
-                        <div className="font-medium">{label}</div>
-                        <div className="text-xs text-gray-500">{sub}</div>
+                        <div className="font-medium text-zinc-200">{label}</div>
+                        <div className="text-xs text-zinc-500">{sub}</div>
                       </div>
                     </div>
                   </div>
@@ -148,8 +160,8 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
             </div>
           </div>
 
-          <div className="border-t pt-4 mt-4">
-            <a href={SCAFFOLD_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center">
+          <div className="border-t border-zinc-700 pt-4 mt-4">
+            <a href={SCAFFOLD_URL} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-500 hover:text-zinc-300 flex items-center justify-center">
               Learn more about Scaffold AI
               <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

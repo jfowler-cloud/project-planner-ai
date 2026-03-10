@@ -10,6 +10,7 @@ import boto3
 
 from ..config import settings
 from ..models.project import ArchitectureOption, CostBreakdown, ProjectPlan, ProjectRequest
+from .prompts import PORTFOLIO_STANDARDS
 
 logger = logging.getLogger(__name__)
 
@@ -148,10 +149,11 @@ class ClaudeClient:
             "Developer Experience",
             "Operational Complexity",
             "Compliance & Legal",
-            "Future-Proofing"
+            "Future-Proofing",
+            "Portfolio Standards Compliance"
         ]
 
-        review_type = review_types[iteration - 1] if iteration <= 10 else "General Review"
+        review_type = review_types[iteration - 1] if iteration <= len(review_types) else "General Review"
 
         prompt = self._build_review_prompt(request, options, review_type)
         content = await self._call_claude(prompt, self.models["review"], 2048)
@@ -179,6 +181,8 @@ class ClaudeClient:
         """Build prompt for architecture generation"""
         return f"""You are an expert cloud architect. Generate 3-5 architecture options for this project.
 
+{PORTFOLIO_STANDARDS}
+
 Project Details:
 - Name: {request.basics.name}
 - Description: {request.basics.description}
@@ -201,8 +205,12 @@ Preferences:
 - Infrastructure: {request.preferences.infrastructure}
 - Cloud: {request.preferences.cloud_provider}
 
-Generate 3-5 architecture options. For each option, provide:
-1. Name (e.g., "Full Serverless", "Containerized")
+Generate 3-5 architecture options. The RECOMMENDED option (first in the list) MUST follow the
+portfolio architecture standards above (React 19 + Vite + Cloudscape, Lambda + Powertools,
+DynamoDB, CDK v2, Cognito, S3 + CloudFront). Alternative options may explore other approaches.
+
+For each option, provide:
+1. Name (e.g., "Portfolio Standard Serverless", "Containerized")
 2. Description (2-3 sentences)
 3. Technology stack as a DICTIONARY/OBJECT with keys like "backend", "frontend", "database", "hosting" (NOT a list)
 4. Pros (3-5 bullet points as array of strings)
@@ -214,14 +222,14 @@ Generate 3-5 architecture options. For each option, provide:
 CRITICAL: Format as JSON array. Example structure:
 [
   {{
-    "name": "Serverless Architecture",
-    "description": "Fully serverless using AWS Lambda and DynamoDB",
-    "stack": {{"backend": "AWS Lambda", "frontend": "React", "database": "DynamoDB"}},
-    "pros": ["Low cost", "Auto-scaling"],
-    "cons": ["Cold starts", "Vendor lock-in"],
+    "name": "Portfolio Standard Serverless",
+    "description": "Standards-compliant serverless using Lambda + Powertools, DynamoDB, React 19 + Cloudscape, CDK v2",
+    "stack": {{"backend": "Lambda + aws-lambda-powertools", "frontend": "React 19 + Vite + Cloudscape", "database": "DynamoDB", "infra": "CDK v2", "auth": "Cognito", "hosting": "S3 + CloudFront"}},
+    "pros": ["Portfolio-consistent", "Auto-scaling", "Pay-per-use"],
+    "cons": ["Cold starts", "AWS-only"],
     "cost_estimate": "$50-100/month",
     "complexity": "Medium",
-    "best_for": "Small to medium projects"
+    "best_for": "Portfolio projects following org standards"
   }}
 ]"""
 
@@ -239,6 +247,8 @@ CRITICAL: Format as JSON array. Example structure:
 
         return f"""Perform a {review_type} for these architecture options.
 
+{PORTFOLIO_STANDARDS}
+
 Project: {request.basics.name}
 Requirements: {request.technical.user_count} users, {request.technical.uptime} uptime
 
@@ -250,6 +260,7 @@ Provide specific findings for {review_type}:
 - Recommendations for each option
 - Critical issues that must be addressed
 - Best practices to follow
+- Compliance with portfolio architecture standards
 
 Be concise but thorough."""
 
@@ -272,6 +283,8 @@ Be concise but thorough."""
 
         return f"""Based on all reviews, recommend the best architecture option.
 
+{PORTFOLIO_STANDARDS}
+
 Project: {request.basics.name}
 Budget: {request.basics.budget}
 Timeline: {request.basics.timeline}
@@ -281,6 +294,10 @@ Options:
 
 Review Summary:
 {reviews_text}
+
+Prefer the option that best follows the portfolio architecture standards (React 19 + Vite + Cloudscape,
+Lambda + Powertools, DynamoDB, CDK v2, Cognito, S3 + CloudFront). Only recommend a non-standard
+option if the reviews clearly show it is significantly better for this specific project.
 
 Provide:
 1. Recommended option name
@@ -428,14 +445,14 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
         """Default architecture options as fallback"""
         return [
             ArchitectureOption(
-                name="Full Serverless",
-                description="Zero-ops architecture using AWS Lambda, API Gateway, and DynamoDB",
-                stack={"frontend": "Next.js on Vercel", "backend": "Lambda + API Gateway", "database": "DynamoDB"},
-                pros=["Auto-scaling", "Pay-per-use", "Zero ops"],
-                cons=["Cold starts", "Vendor lock-in"],
+                name="Portfolio Standard Serverless",
+                description="Standards-compliant serverless architecture using Lambda + Powertools, DynamoDB, React 19 + Cloudscape, and CDK v2",
+                stack={"frontend": "React 19 + Vite on S3/CloudFront", "backend": "Lambda + aws-lambda-powertools", "database": "DynamoDB", "infra": "CDK v2", "auth": "Cognito"},
+                pros=["Portfolio-consistent", "Auto-scaling", "Pay-per-use", "Zero ops"],
+                cons=["Cold starts", "AWS-only"],
                 cost_estimate="$50-200/month",
                 complexity="Low",
-                best_for="MVPs and variable traffic"
+                best_for="Portfolio projects following org standards"
             )
         ]
 
@@ -454,7 +471,7 @@ IMPORTANT: risk_assessment and security_checklist MUST be arrays of strings:
             architecture_options=options,
             recommended_option=options[0].name if options else "Full Serverless",
             justification="Recommended based on requirements",
-            technology_stack={"frontend": "Next.js", "backend": "FastAPI", "database": "PostgreSQL"},
+            technology_stack={"frontend": "React 19 + Vite", "backend": "Lambda + aws-lambda-powertools", "database": "DynamoDB", "infra": "CDK v2", "auth": "Cognito", "hosting": "S3 + CloudFront"},
             cost_breakdown=CostBreakdown(
                 compute="$50/month",
                 storage="$10/month",
