@@ -16,6 +16,8 @@ dev = [
     "pytest-json-report>=1.5",
     "pip-audit>=2.7",
     "ruff>=0.8.0",
+    "aws-lambda-powertools[tracer]>=2.0",
+    "moto[dynamodb,s3,ssm,secretsmanager]>=5.0",
 ]
 
 [tool.ruff]

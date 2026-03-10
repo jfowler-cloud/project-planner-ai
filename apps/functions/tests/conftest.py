@@ -5,8 +5,11 @@ from unittest.mock import MagicMock, patch
 
 os.environ.setdefault('DEPLOYMENT_TIER', 'testing')
 os.environ.setdefault('AWS_REGION', 'us-east-1')
+os.environ.setdefault('AWS_DEFAULT_REGION', 'us-east-1')
 os.environ.setdefault('BEDROCK_MODEL_ID', 'us.anthropic.claude-haiku-4-5-20251001-v1:0')
 os.environ.setdefault('PLANNER_PLANS_TABLE', 'project-planner-plans')
+os.environ.setdefault('POWERTOOLS_TRACE_DISABLED', '1')
+os.environ.setdefault('POWERTOOLS_METRICS_NAMESPACE', 'ProjectPlannerAI')
 
 # Add shared config to path
 _base = os.path.dirname(__file__)

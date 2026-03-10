@@ -7,7 +7,7 @@ import { WorkflowStack } from '../lib/workflow-stack'
 
 const app = new cdk.App()
 
-const tier = (process.env.DEPLOYMENT_TIER ?? 'testing') as 'testing' | 'optimized' | 'premium'
+const tier = (app.node.tryGetContext('deploymentTier') ?? process.env.DEPLOYMENT_TIER ?? 'testing') as 'testing' | 'optimized' | 'premium'
 
 const MODEL_MAP: Record<string, string> = {
   testing: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',

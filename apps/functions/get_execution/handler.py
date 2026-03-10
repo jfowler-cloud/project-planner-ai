@@ -1,18 +1,23 @@
 """Lambda: poll Step Functions execution status — identical pattern to scaffold-ai."""
 import json
-import logging
 import os
 import sys
 
 import boto3
+from aws_lambda_powertools import Logger, Tracer, Metrics
+from aws_lambda_powertools.metrics import MetricUnit
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
 from config import app_config
 
-logger = logging.getLogger(__name__)
+logger = Logger()
+tracer = Tracer()
+metrics = Metrics()
 sfn = boto3.client("stepfunctions", region_name=app_config.aws_region)
 
 
+@tracer.capture_lambda_handler
+@metrics.log_metrics
 def handler(event: dict, context=None) -> dict:
     execution_arn = (
         event.get("executionArn")

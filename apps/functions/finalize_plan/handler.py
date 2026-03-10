@@ -1,18 +1,24 @@
 """Lambda: finalize plan, persist to DynamoDB."""
-import logging
 import os
 import sys
 import time
 import uuid
+
+from aws_lambda_powertools import Logger, Tracer, Metrics
+from aws_lambda_powertools.metrics import MetricUnit
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
 
 from config import app_config
 from db import put_item
 
-logger = logging.getLogger(__name__)
+logger = Logger()
+tracer = Tracer()
+metrics = Metrics()
 
 
+@tracer.capture_lambda_handler
+@metrics.log_metrics
 def handler(event: dict, context=None) -> dict:
     """
     Input:  {plan_id, questionnaire, recommended, alternatives, review_findings}

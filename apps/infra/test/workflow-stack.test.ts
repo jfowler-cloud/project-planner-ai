@@ -5,24 +5,28 @@ import { FunctionsStack } from '../lib/functions-stack';
 import { WorkflowStack } from '../lib/workflow-stack';
 
 describe('ProjectPlanner Multi-Stack', () => {
+  let databaseStack: DatabaseStack;
+  let functionsStack: FunctionsStack;
+  let workflowStack: cdk.Stack;
   let dbTemplate: Template;
   let fnsTemplate: Template;
   let wfTemplate: Template;
 
   beforeAll(() => {
     const app = new cdk.App({ context: { 'aws:cdk:bundling-stacks': [] } });
-    const db = new DatabaseStack(app, 'TestDB');
-    const fns = new FunctionsStack(app, 'TestFns', {
+    databaseStack = new DatabaseStack(app, 'TestDB');
+    functionsStack = new FunctionsStack(app, 'TestFns', {
       deploymentTier: 'testing',
       modelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
-      plansTable: db.plansTable,
-      alarmTopic: db.alarmTopic,
+      plansTable: databaseStack.plansTable,
+      alarmTopic: databaseStack.alarmTopic,
     });
-    new WorkflowStack(app, 'TestWF', { db, fns });
+    new WorkflowStack(app, 'TestWF', { db: databaseStack, fns: functionsStack });
 
-    dbTemplate = Template.fromStack(db);
-    fnsTemplate = Template.fromStack(fns);
-    wfTemplate = Template.fromStack(app.node.findChild('TestWF') as cdk.Stack);
+    workflowStack = app.node.findChild('TestWF') as cdk.Stack;
+    dbTemplate = Template.fromStack(databaseStack);
+    fnsTemplate = Template.fromStack(functionsStack);
+    wfTemplate = Template.fromStack(workflowStack);
   });
 
   // ── DatabaseStack ─────────────────────────────────────────────────────────
@@ -89,7 +93,10 @@ describe('ProjectPlanner Multi-Stack', () => {
   test('grants Bedrock InvokeModel', () => {
     fnsTemplate.hasResourceProperties('AWS::IAM::Policy', {
       PolicyDocument: {
-        Statement: Match.arrayWith([Match.objectLike({ Action: 'bedrock:InvokeModel', Effect: 'Allow' })]),
+        Statement: Match.arrayWith([Match.objectLike({
+          Action: Match.arrayWith(['bedrock:InvokeModel']),
+          Effect: 'Allow',
+        })]),
       },
     });
   });
@@ -121,5 +128,22 @@ describe('ProjectPlanner Multi-Stack', () => {
 
   test('exports WorkflowArn', () => {
     wfTemplate.hasOutput('WorkflowArn', {});
+  });
+
+  // ── Snapshot Tests ────────────────────────────────────────────────────────
+
+  test('DatabaseStack matches snapshot', () => {
+    const template = Template.fromStack(databaseStack);
+    expect(template.toJSON()).toMatchSnapshot();
+  });
+
+  test('FunctionsStack matches snapshot', () => {
+    const template = Template.fromStack(functionsStack);
+    expect(template.toJSON()).toMatchSnapshot();
+  });
+
+  test('WorkflowStack matches snapshot', () => {
+    const template = Template.fromStack(workflowStack);
+    expect(template.toJSON()).toMatchSnapshot();
   });
 });

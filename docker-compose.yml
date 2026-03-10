@@ -13,6 +13,24 @@ services:
       timeout: 3s
       retries: 5
 
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb,s3,ssm
+      - DEFAULT_REGION=us-east-1
+      - DEBUG=0
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   backend:
     build:
       context: ./apps/backend
@@ -23,8 +41,11 @@ services:
       - REDIS_URL=redis://redis:6379
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ENDPOINT_URL=http://localstack:4566
     depends_on:
       redis:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     volumes:
       - ./apps/backend/src:/app/src
@@ -43,14 +64,13 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:8000
     depends_on:
       backend:
         condition: service_healthy
     volumes:
       - ./apps/web:/app
       - /app/node_modules
-      - /app/.next
     command: npm run dev
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
@@ -61,3 +81,4 @@ services:
 
 volumes:
   redis_data:
+  localstack_data:

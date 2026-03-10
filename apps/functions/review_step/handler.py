@@ -1,8 +1,10 @@
 """Lambda: run one review iteration — invoked 10x via Step Functions Map state."""
 import json
-import logging
 import os
 import sys
+
+from aws_lambda_powertools import Logger, Tracer, Metrics
+from aws_lambda_powertools.metrics import MetricUnit
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
 
@@ -10,7 +12,9 @@ from strands import Agent
 from strands.models.bedrock import BedrockModel
 from config import app_config
 
-logger = logging.getLogger(__name__)
+logger = Logger()
+tracer = Tracer()
+metrics = Metrics()
 
 SYSTEM_PROMPT = """You are a senior software architect performing a focused review.
 Always respond with valid JSON only."""
@@ -37,6 +41,8 @@ Respond with JSON:
 If the stack needs changes, set updated_stack to the full updated recommended object. Otherwise null."""
 
 
+@tracer.capture_lambda_handler
+@metrics.log_metrics
 def handler(event: dict, context=None) -> dict:
     """
     Input:  {questionnaire, recommended, review_findings, category, iteration}

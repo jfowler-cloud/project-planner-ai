@@ -21,13 +21,12 @@ export default defineConfig({
       all: true,
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
-      // TODO: Restore original thresholds (lines:93, branches:86, functions:83, statements:92)
-      // Temporarily lowered for CodeCommit pipeline setup — raise after coverage pass
+      // TODO: Target thresholds per PROJECT_STANDARDS.md: lines:95, branches:90, functions:90, statements:95
       thresholds: {
-        lines: 80,
-        branches: 80,
-        functions: 80,
-        statements: 80,
+        lines: 93,
+        branches: 86,
+        functions: 83,
+        statements: 92,
       },
     },
   },
