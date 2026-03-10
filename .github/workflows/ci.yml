@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
       - run: uv python install 3.12
       - run: cd apps/functions && uv sync --all-extras
       - run: cd apps/functions && uv run ruff check .
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
       - run: uv python install 3.12
       - run: cd apps/agents && uv sync --all-extras
       - run: cd apps/agents && uv run pytest tests/
@@ -71,7 +71,7 @@ jobs:
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci && npm audit --audit-level=high
         working-directory: apps/web
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
       - run: uv python install 3.12
 
       - name: pip-audit (functions)
