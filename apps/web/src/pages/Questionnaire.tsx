@@ -19,7 +19,7 @@ export default function QuestionnairePage() {
   const [step, setStep] = useState(1);
   const [reviewCount, setReviewCount] = useState(3);
 
-  const { register, handleSubmit: handleBasicsSubmit, formState: { errors: basicsErrors } } = useForm({
+  const { register, handleSubmit: handleBasicsSubmit, formState: { errors: basicsErrors }, setValue: setFormValue } = useForm({
     resolver: zodResolver(basicsSchema),
     mode: "onTouched",
   });
@@ -44,12 +44,16 @@ export default function QuestionnairePage() {
   });
 
   const fillDemoData = () => {
-    setBasics({
+    const demoBasics = {
       name: "Flow Log Analyzer",
       description: "A serverless application that analyzes VPC flow logs, detects anomalies, and provides visual dashboards for network traffic patterns and security insights.",
       target_users: "DevOps engineers, security analysts, and network administrators",
       timeline: "1 week", budget: "$100-$500",
-    });
+    };
+    setBasics(demoBasics);
+    setFormValue("name", demoBasics.name);
+    setFormValue("description", demoBasics.description);
+    setFormValue("target_users", demoBasics.target_users);
     setTechnical({
       user_count: "1K-10K", growth_rate: "Moderate", uptime: "99.9%", multi_region: false,
       regions: [], data_size: "10-100GB", data_sensitivity: "Confidential",
