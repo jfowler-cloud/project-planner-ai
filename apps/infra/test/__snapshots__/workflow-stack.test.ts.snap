@@ -531,7 +531,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
           },
-          "S3Key": "e1801c4353b2e6aec4553f6b74cd3d2501d91e7c64cb5d63efdbd33ac176719d.zip",
+          "S3Key": "ASSET_HASH.zip",
         },
         "Description": "Project Planner strands-agents core",
       },
@@ -547,7 +547,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
           },
-          "S3Key": "68f4c968f5cf389fde36098ecdbcd4045e5bdcc04f374421c83b64ca26a46ccc.zip",
+          "S3Key": "ASSET_HASH.zip",
         },
         "Environment": {
           "Variables": {
@@ -752,7 +752,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
           },
-          "S3Key": "b1d321df034f70c41b8575551a817b4cd92ea5849d155c26cc3cf2df70e5c2f0.zip",
+          "S3Key": "ASSET_HASH.zip",
         },
         "Environment": {
           "Variables": {
@@ -944,7 +944,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
           },
-          "S3Key": "43cb28a01c4848ba02a84fde3bb6a0c2b11ea64b6a8687a40786758d74bf9263.zip",
+          "S3Key": "ASSET_HASH.zip",
         },
         "Environment": {
           "Variables": {
@@ -1101,7 +1101,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
           },
-          "S3Key": "d53e74a2d73505e1a22125bc42bca3c2339c213392b5ec39f81828f35deae7ef.zip",
+          "S3Key": "ASSET_HASH.zip",
         },
         "Environment": {
           "Variables": {
@@ -1292,7 +1292,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
           },
-          "S3Key": "f50bfa72b9da4f8f53ac358387f30c6a6abc52e28cf391982ffa4f99e5ae9b00.zip",
+          "S3Key": "ASSET_HASH.zip",
         },
         "Description": "Project Planner shared utilities — pydantic-settings, powertools, xray",
       },

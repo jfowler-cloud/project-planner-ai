@@ -4,6 +4,16 @@ import { DatabaseStack } from '../lib/database-stack';
 import { FunctionsStack } from '../lib/functions-stack';
 import { WorkflowStack } from '../lib/workflow-stack';
 
+/** Strip volatile asset hashes so snapshots are stable across environments */
+function stripAssetHashes(obj: unknown): unknown {
+  if (typeof obj === 'string') return obj.replace(/[a-f0-9]{64}\.zip/g, 'ASSET_HASH.zip');
+  if (Array.isArray(obj)) return obj.map(stripAssetHashes);
+  if (obj && typeof obj === 'object') {
+    return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, stripAssetHashes(v)]));
+  }
+  return obj;
+}
+
 describe('ProjectPlanner Multi-Stack', () => {
   let databaseStack: DatabaseStack;
   let functionsStack: FunctionsStack;
@@ -133,17 +143,14 @@ describe('ProjectPlanner Multi-Stack', () => {
   // ── Snapshot Tests ────────────────────────────────────────────────────────
 
   test('DatabaseStack matches snapshot', () => {
-    const template = Template.fromStack(databaseStack);
-    expect(template.toJSON()).toMatchSnapshot();
+    expect(stripAssetHashes(Template.fromStack(databaseStack).toJSON())).toMatchSnapshot();
   });
 
   test('FunctionsStack matches snapshot', () => {
-    const template = Template.fromStack(functionsStack);
-    expect(template.toJSON()).toMatchSnapshot();
+    expect(stripAssetHashes(Template.fromStack(functionsStack).toJSON())).toMatchSnapshot();
   });
 
   test('WorkflowStack matches snapshot', () => {
-    const template = Template.fromStack(workflowStack);
-    expect(template.toJSON()).toMatchSnapshot();
+    expect(stripAssetHashes(Template.fromStack(workflowStack).toJSON())).toMatchSnapshot();
   });
 });
