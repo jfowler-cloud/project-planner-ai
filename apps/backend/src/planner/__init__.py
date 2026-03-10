@@ -1,1 +1,0 @@
-"""Project Planner AI backend."""

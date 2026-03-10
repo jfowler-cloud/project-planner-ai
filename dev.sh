@@ -1,26 +1,18 @@
 #!/bin/bash
-# dev.sh — start project-planner-ai (and optionally scaffold-ai) locally
-# Project Planner: backend :8000, frontend :3000
-# Scaffold AI:     backend :8001, frontend :3001
+# dev.sh — start project-planner-ai frontend locally
+# Frontend: :3000, connects to deployed Lambda/SFN via Cognito
 
 set -e
 
-# Start Redis (optional - skip if Docker not available)
-if command -v docker &> /dev/null; then
-    docker run -d --rm --name project-planner-redis -p 6379:6379 redis:alpine 2>/dev/null || echo "⚠️  Redis already running or failed to start"
-else
-    echo "⚠️  Docker not found - Redis not started (caching disabled)"
+# Populate env vars from CDK outputs if setup-env.sh exists
+if [ -f "scripts/setup-env.sh" ]; then
+    echo "📋  Populating env vars from CDK outputs..."
+    source scripts/setup-env.sh
 fi
-
-# Start backend
-cd apps/backend
-AI_PROVIDER=bedrock DEPLOYMENT_TIER=testing AWS_REGION=us-east-1 uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
-BACKEND_PID=$!
-cd ../..
 
 # Start frontend
 cd apps/web
-VITE_API_URL=http://localhost:8000 VITE_SCAFFOLD_URL=http://localhost:3001 npm run dev &
+npm run dev &
 FRONTEND_PID=$!
 cd ../..
 
@@ -57,15 +49,11 @@ fi
 cleanup() {
     echo ""
     echo "Stopping services..."
-    kill $BACKEND_PID $FRONTEND_PID $SCAFFOLD_BACKEND_PID $SCAFFOLD_FRONTEND_PID 2>/dev/null
-    if command -v docker &> /dev/null; then
-        docker stop project-planner-redis 2>/dev/null
-    fi
+    kill $FRONTEND_PID $SCAFFOLD_BACKEND_PID $SCAFFOLD_FRONTEND_PID 2>/dev/null
 }
 trap cleanup EXIT
 
 echo ""
-echo "🚀  Project Planner Backend:  http://localhost:8000"
 echo "🚀  Project Planner Frontend: http://localhost:3000"
 if [ -d "../scaffold-ai" ]; then
     echo "🚀  Scaffold AI Backend:      http://localhost:8001"

@@ -23,19 +23,6 @@ jobs:
       - run: npm run test:coverage
         working-directory: apps/web
 
-  backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
-      - run: uv python install 3.12
-      - run: cd apps/backend && uv sync --all-extras
-      - run: cd apps/backend && uv run ruff check src/
-      - run: cd apps/backend && uv run pytest tests/
-        env:
-          AI_PROVIDER: anthropic
-          DEPLOYMENT_TIER: testing
-
   functions:
     name: Functions (Lambda handlers)
     runs-on: ubuntu-latest
@@ -86,7 +73,6 @@ jobs:
         working-directory: apps/web
       - uses: astral-sh/setup-uv@v4
       - run: uv python install 3.12
-      - run: cd apps/backend && uv sync --extra dev && uv run pip-audit
 
       - name: pip-audit (functions)
         run: cd apps/functions && uv sync --group dev && uv run pip-audit
