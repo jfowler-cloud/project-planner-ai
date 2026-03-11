@@ -1,37 +1,56 @@
 import { useState } from "react";
 import { SCAFFOLD_URL, SCAFFOLD_BACKEND_URL } from "@/lib/config";
 
+interface ArchitectureOption {
+  name: string;
+  description?: string;
+  stack?: Record<string, string>;
+  pros: string[];
+  cons: string[];
+}
+
+interface ProjectPlan {
+  plan_id: string;
+  questionnaire?: {
+    basics?: { name?: string; description?: string };
+    technical?: { user_count?: string; uptime?: string; data_size?: string };
+  };
+  recommended: ArchitectureOption;
+  alternatives: ArchitectureOption[];
+  selectedOptionIndex?: number;
+}
+
 interface ScaffoldIntegrationProps {
-  projectPlan?: any;
+  projectPlan?: ProjectPlan;
 }
 
 export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegrationProps) {
   const [isOpen, setIsOpen] = useState(false);
 
+  const getSelectedOption = (): ArchitectureOption | undefined => {
+    if (!projectPlan) return undefined;
+    const allOptions = [projectPlan.recommended, ...projectPlan.alternatives];
+    const idx = projectPlan.selectedOptionIndex ?? 0;
+    return allOptions[idx] ?? projectPlan.recommended;
+  };
+
   const handleExportToScaffold = async () => {
     if (!projectPlan) return;
 
-    let selectedArchitecture = projectPlan.recommended_option;
-    let selectedStack = projectPlan.technology_stack;
-
-    if (projectPlan.selectedOptionIndex != null) {
-      const selectedOption = projectPlan.architecture_options[projectPlan.selectedOptionIndex];
-      if (selectedOption) {
-        selectedArchitecture = selectedOption.name;
-        selectedStack = selectedOption.stack;
-      }
-    }
+    const selected = getSelectedOption()!;
+    const basics = projectPlan.questionnaire?.basics;
+    const technical = projectPlan.questionnaire?.technical;
 
     const planData = {
-      plan_id: projectPlan.plan_id || `plan-${Date.now()}`,
-      project_name: projectPlan.basics.name,
-      description: projectPlan.basics.description,
-      architecture: selectedArchitecture,
-      tech_stack: selectedStack,
+      plan_id: projectPlan.plan_id,
+      project_name: basics?.name ?? "Untitled",
+      description: basics?.description ?? "",
+      architecture: selected.name,
+      tech_stack: selected.stack ?? {},
       requirements: {
-        users: projectPlan.technical.user_count,
-        uptime: projectPlan.technical.uptime,
-        data_size: projectPlan.technical.data_size,
+        users: technical?.user_count,
+        uptime: technical?.uptime,
+        data_size: technical?.data_size,
       },
       portfolio_standards: {
         structure: "mono-repo: apps/{agents,functions,infra,web}",
@@ -60,12 +79,17 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
       alert("Plan sent to Scaffold AI successfully!");
     } catch (error) {
       console.error("Error sending plan to Scaffold AI:", error);
-      const prompt = `I have a project plan from Project Planner AI:\n\nProject: ${projectPlan.basics.name}\nDescription: ${projectPlan.basics.description}\nArchitecture: ${selectedArchitecture}\nTech Stack: ${Object.entries(selectedStack).map(([k, v]) => `${k}: ${v}`).join(", ")}\n\nPlease help me build this architecture following these portfolio standards:\n- Mono-repo: apps/{agents,functions,infra,web}\n- Frontend: React 19 + Vite + Cloudscape (dark mode, red accent #e8001c)\n- Backend: AWS Lambda + Powertools, Python 3.12+, uv\n- Infra: CDK v2 TypeScript, DynamoDB, Cognito, S3+CloudFront\n- Testing: Vitest 95%+, pytest+moto 95%+, Playwright E2E\n- CI: GitHub Actions 5-job pipeline`;
+      const stackStr = selected.stack ? Object.entries(selected.stack).map(([k, v]) => `${k}: ${v}`).join(", ") : "N/A";
+      const prompt = `I have a project plan from Project Planner AI:\n\nProject: ${basics?.name ?? "Untitled"}\nDescription: ${basics?.description ?? ""}\nArchitecture: ${selected.name}\nTech Stack: ${stackStr}\n\nPlease help me build this architecture following these portfolio standards:\n- Mono-repo: apps/{agents,functions,infra,web}\n- Frontend: React 19 + Vite + Cloudscape (dark mode, red accent #e8001c)\n- Backend: AWS Lambda + Powertools, Python 3.12+, uv\n- Infra: CDK v2 TypeScript, DynamoDB, Cognito, S3+CloudFront\n- Testing: Vitest 95%+, pytest+moto 95%+, Playwright E2E\n- CI: GitHub Actions 5-job pipeline`;
       window.open(`${SCAFFOLD_URL}?from=planner&prompt=${encodeURIComponent(prompt)}`, "_blank");
       navigator.clipboard.writeText(prompt).catch(() => {});
       alert("Using fallback method. Plan data copied to clipboard!");
     }
   };
+
+  const selected = getSelectedOption();
+  const basics = projectPlan?.questionnaire?.basics;
+  const stackCount = selected?.stack ? Object.keys(selected.stack).length : 0;
 
   return (
     <>
@@ -108,13 +132,13 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 mb-4">
                   <div className="text-sm font-medium text-zinc-200 mb-2">Ready to export:</div>
                   <div className="text-xs text-zinc-400 mb-3">
-                    <div>• {projectPlan.basics.name}</div>
-                    <div>• {projectPlan.recommended_option}</div>
-                    <div>• {Object.keys(projectPlan.technology_stack).length} technologies</div>
+                    <div>• {basics?.name ?? "Untitled"}</div>
+                    <div>• {selected?.name ?? "No architecture selected"}</div>
+                    {stackCount > 0 && <div>• {stackCount} technologies</div>}
                   </div>
                   <button
                     onClick={() => {
-                      const desc = `${projectPlan.basics.description}\n\nArchitecture: ${projectPlan.recommended_option}\n\nTech Stack: ${Object.entries(projectPlan.technology_stack).map(([k, v]) => `${k}: ${v}`).join(", ")}`;
+                      const desc = `${basics?.description ?? ""}\n\nArchitecture: ${selected?.name ?? "N/A"}\n\nTech Stack: ${selected?.stack ? Object.entries(selected.stack).map(([k, v]) => `${k}: ${v}`).join(", ") : "N/A"}`;
                       navigator.clipboard.writeText(desc).then(() => alert("Description copied to clipboard!"));
                     }}
                     className="w-full px-3 py-2 text-sm border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 transition-all mb-2"

@@ -1,7 +1,12 @@
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeProvider";
 
-export default function HomePage() {
+interface Props {
+  signOut?: () => void;
+  userEmail?: string;
+}
+
+export default function HomePage({ signOut, userEmail }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
       <nav className="border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
@@ -13,6 +18,11 @@ export default function HomePage() {
               <Link to="/questionnaire" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                 Start Planning
               </Link>
+              {signOut && (
+                <button onClick={signOut} className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">
+                  {userEmail ? `${userEmail} · Sign out` : 'Sign out'}
+                </button>
+              )}
             </div>
           </div>
         </div>

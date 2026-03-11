@@ -17,33 +17,35 @@ vi.mock("@/components/ThemeProvider", () => ({
   ThemeToggle: () => <button>Toggle</button>,
 }));
 
-global.fetch = vi.fn() as any;
-
 import ResultsPage from "@/pages/Results";
 
 const mockPlan = {
-  project_id: "test-123",
-  basics: { name: "Test Project", description: "A test", timeline: "1 week", budget: "$100" },
-  technical: {},
-  preferences: {},
-  architecture_options: [
-    { name: "Serverless", description: "desc", pros: ["cheap"], cons: ["cold starts"], cost_estimate: "$10/mo", complexity: "Low" },
-  ],
-  recommended_option: "Serverless",
-  justification: "Best for small projects",
-  technology_stack: { frontend: "React", backend: "Lambda" },
-  cost_breakdown: {
-    compute: "$5", storage: "$2", database: "$3", ai_api: "$0",
-    networking: "$1", total_monthly: "$11", total_yearly: "$132",
+  plan_id: "test-123",
+  questionnaire: {
+    basics: { name: "Test Project", description: "A test project", timeline: "1 week", budget: "$100" },
   },
-  timeline_estimate: "2 weeks",
-  risk_assessment: ["Vendor lock-in"],
-  security_checklist: ["Enable encryption"],
+  recommended: {
+    name: "Serverless",
+    description: "Serverless architecture",
+    best_for: "Best for small projects",
+    stack: { frontend: "React", backend: "Lambda" },
+    pros: ["cheap"],
+    cons: ["cold starts"],
+    cost_estimate: "$10/mo",
+    monthly_cost_estimate: "$10/mo",
+    complexity: "Low",
+  },
+  alternatives: [
+    { name: "Containers", description: "ECS", pros: ["flexible"], cons: ["complex"], cost_estimate: "$20/mo", complexity: "Medium" },
+  ],
+  review_findings: [
+    { iteration: 1, category: "security", findings: ["Enable encryption"], recommendations: ["Use KMS"], risk_level: "high" },
+    { iteration: 1, category: "cost", findings: ["Budget is tight"], recommendations: ["Use reserved instances"], risk_level: "medium" },
+  ],
 };
 
 beforeEach(() => {
   mockNavigate.mockClear();
-  (global.fetch as ReturnType<typeof vi.fn>).mockClear();
   Object.defineProperty(window, "sessionStorage", {
     value: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn(), clear: vi.fn() },
     writable: true,
@@ -67,19 +69,15 @@ describe("ResultsPage", () => {
     await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
   });
 
-  it("fetches plan from API when sessionStorage is empty", async () => {
+  it("redirects to questionnaire when no plan data and no id", async () => {
     (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(null);
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => mockPlan });
-    renderPage();
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/v1/plan/test-123"));
-    });
-  });
-
-  it("redirects to questionnaire when API fetch fails", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(null);
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false });
-    renderPage();
+    render(
+      <MemoryRouter initialEntries={["/results"]}>
+        <Routes>
+          <Route path="/results" element={<ResultsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
     await waitFor(() => { expect(mockNavigate).toHaveBeenCalledWith("/questionnaire"); });
   });
 
@@ -91,7 +89,6 @@ describe("ResultsPage", () => {
 
   it("shows loading spinner before plan loads", () => {
     (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(null);
-    (global.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {})); // never resolves
     renderPage();
     expect(document.querySelector(".animate-spin")).toBeInTheDocument();
   });
@@ -100,7 +97,7 @@ describe("ResultsPage", () => {
     (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
     renderPage();
     await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
-    ["overview", "architecture", "costs", "security"].forEach((tab) => {
+    ["overview", "architecture", "reviews", "security"].forEach((tab) => {
       expect(screen.getByRole("button", { name: tab })).toBeInTheDocument();
     });
   });
@@ -113,12 +110,12 @@ describe("ResultsPage", () => {
     expect(screen.getByText("Architecture Options")).toBeInTheDocument();
   });
 
-  it("switches to costs tab on click", async () => {
+  it("switches to reviews tab on click", async () => {
     (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
     renderPage();
     await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
-    fireEvent.click(screen.getByRole("button", { name: "costs" }));
-    expect(screen.getByText("Cost Breakdown")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "reviews" }));
+    expect(screen.getByText("Critical Review Findings")).toBeInTheDocument();
   });
 
   it("renders recommended option in overview", async () => {
@@ -136,70 +133,14 @@ describe("ResultsPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/questionnaire");
   });
 
-  it("switches to security tab and shows checklist and risk assessment", async () => {
+  it("switches to security tab and shows security findings", async () => {
     (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
     renderPage();
     await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
     fireEvent.click(screen.getByRole("button", { name: "security" }));
-    expect(screen.getByText("Security Checklist")).toBeInTheDocument();
+    expect(screen.getByText("Security Review")).toBeInTheDocument();
     expect(screen.getByText("Enable encryption")).toBeInTheDocument();
-    expect(screen.getByText("Risk Assessment")).toBeInTheDocument();
-    expect(screen.getByText("Vendor lock-in")).toBeInTheDocument();
-  });
-
-  it("clicking architecture option selects it", async () => {
-    const planWithMultipleOptions = {
-      ...mockPlan,
-      architecture_options: [
-        { name: "Serverless", description: "desc", pros: [], cons: [], cost_estimate: "$10/mo", complexity: "Low" },
-        { name: "Containers", description: "ECS", pros: [], cons: [], cost_estimate: "$20/mo", complexity: "Medium" },
-      ],
-    };
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(planWithMultipleOptions));
-    renderPage();
-    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
-    fireEvent.click(screen.getByRole("button", { name: "architecture" }));
-    await waitFor(() => { expect(screen.getByText("Containers")).toBeInTheDocument(); });
-    fireEvent.click(screen.getByText("Containers").closest("div[class*='p-4']")!);
-    expect(screen.getByText("Selected")).toBeInTheDocument();
-  });
-});
-
-describe("ResultsPage - additional coverage", () => {
-  it("shows token modal when Generate GitHub Repository clicked without token", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
-    renderPage();
-    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
-    fireEvent.click(screen.getByText("Generate GitHub Repository"));
-    await waitFor(() => { expect(screen.getByText("GitHub Personal Access Token Required")).toBeInTheDocument(); });
-  });
-
-  it("closes token modal on Cancel", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
-    renderPage();
-    await waitFor(() => screen.getByText("Test Project"));
-    fireEvent.click(screen.getByText("Generate GitHub Repository"));
-    await waitFor(() => screen.getByText("GitHub Personal Access Token Required"));
-    fireEvent.click(screen.getByText("Cancel"));
-    await waitFor(() => { expect(screen.queryByText("GitHub Personal Access Token Required")).not.toBeInTheDocument(); });
-  });
-
-  it("shows cost breakdown values on costs tab", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
-    renderPage();
-    await waitFor(() => screen.getByText("Test Project"));
-    fireEvent.click(screen.getByRole("button", { name: "costs" }));
-    expect(screen.getByText("$11")).toBeInTheDocument();
-    expect(screen.getByText("$132")).toBeInTheDocument();
-  });
-
-  it("shows timeline and technology stack on overview", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
-    renderPage();
-    await waitFor(() => screen.getByText("Test Project"));
-    expect(screen.getByText("2 weeks")).toBeInTheDocument();
-    expect(screen.getByText("React")).toBeInTheDocument();
-    expect(screen.getByText("Lambda")).toBeInTheDocument();
+    expect(screen.getByText(/Use KMS/)).toBeInTheDocument();
   });
 
   it("shows badges for timeline and budget", async () => {
@@ -219,66 +160,24 @@ describe("ResultsPage - additional coverage", () => {
     expect(screen.getByText(/cold starts/)).toBeInTheDocument();
   });
 
+  it("clicking architecture option selects it", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => { expect(screen.getByText("Test Project")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByRole("button", { name: "architecture" }));
+    await waitFor(() => { expect(screen.getByText("Containers")).toBeInTheDocument(); });
+    fireEvent.click(screen.getByText("Containers").closest("div[class*='p-4']")!);
+    expect(screen.getByText("Selected")).toBeInTheDocument();
+  });
+
   it("stores selectedOptionIndex in sessionStorage when option clicked", async () => {
-    const planWithMultipleOptions = {
-      ...mockPlan,
-      architecture_options: [
-        { name: "Serverless", description: "desc", pros: [], cons: [], cost_estimate: "$10/mo", complexity: "Low" },
-        { name: "Containers", description: "ECS", pros: [], cons: [], cost_estimate: "$20/mo", complexity: "Medium" },
-      ],
-    };
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(planWithMultipleOptions));
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
     renderPage();
     await waitFor(() => screen.getByText("Test Project"));
     fireEvent.click(screen.getByRole("button", { name: "architecture" }));
     await waitFor(() => screen.getByText("Containers"));
     fireEvent.click(screen.getByText("Containers").closest("div[class*='p-4']")!);
     expect(window.sessionStorage.setItem).toHaveBeenCalled();
-  });
-
-  it("calls generate-repo API with token", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, json: async () => ({ repo_url: "https://github.com/test/repo" }) });
-    window.alert = vi.fn();
-    window.open = vi.fn();
-    renderPage();
-    await waitFor(() => screen.getByText("Test Project"));
-    fireEvent.click(screen.getByText("Generate GitHub Repository"));
-    await waitFor(() => screen.getByText("GitHub Personal Access Token Required"));
-    fireEvent.change(screen.getByPlaceholderText("ghp_xxxxxxxxxxxx"), { target: { value: "ghp_test123" } });
-    fireEvent.click(screen.getByText("Continue"));
-    await waitFor(() => { expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/v1/generate-repo"), expect.any(Object)); });
-  });
-
-  it("shows error when generate-repo fails", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, json: async () => ({ detail: "Repo creation failed" }) });
-    window.alert = vi.fn();
-    renderPage();
-    await waitFor(() => screen.getByText("Test Project"));
-    fireEvent.click(screen.getByText("Generate GitHub Repository"));
-    await waitFor(() => screen.getByText("GitHub Personal Access Token Required"));
-    fireEvent.change(screen.getByPlaceholderText("ghp_xxxxxxxxxxxx"), { target: { value: "ghp_test123" } });
-    fireEvent.click(screen.getByText("Continue"));
-    await waitFor(() => { expect(window.alert).toHaveBeenCalledWith(expect.stringContaining("Repo creation failed")); });
-  });
-
-  it("shows PDF export not implemented alert", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
-    window.alert = vi.fn();
-    renderPage();
-    await waitFor(() => screen.getByText("Test Project"));
-    fireEvent.click(screen.getByText("Export as PDF"));
-    expect(window.alert).toHaveBeenCalledWith("PDF export is not implemented yet.");
-  });
-
-  it("shows Markdown export not implemented alert", async () => {
-    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
-    window.alert = vi.fn();
-    renderPage();
-    await waitFor(() => screen.getByText("Test Project"));
-    fireEvent.click(screen.getByText("Export as Markdown"));
-    expect(window.alert).toHaveBeenCalledWith("Markdown export is not implemented yet.");
   });
 
   it("selects option via radio button", async () => {
@@ -290,5 +189,39 @@ describe("ResultsPage - additional coverage", () => {
     const radios = screen.getAllByRole("radio");
     fireEvent.click(radios[0]);
     expect(radios[0]).toBeChecked();
+  });
+
+  it("shows technology stack on overview", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    expect(screen.getByText("React")).toBeInTheDocument();
+    expect(screen.getByText("Lambda")).toBeInTheDocument();
+  });
+
+  it("shows review findings with risk levels on reviews tab", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByRole("button", { name: "reviews" }));
+    expect(screen.getByText("high")).toBeInTheDocument();
+    expect(screen.getByText("medium")).toBeInTheDocument();
+    expect(screen.getByText(/2 categories reviewed/)).toBeInTheDocument();
+  });
+
+  it("shows risk level summary on security tab", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByRole("button", { name: "security" }));
+    expect(screen.getByText("All Risk Levels")).toBeInTheDocument();
+  });
+
+  it("Start New Plan button navigates to questionnaire", async () => {
+    (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockPlan));
+    renderPage();
+    await waitFor(() => screen.getByText("Test Project"));
+    fireEvent.click(screen.getByText("Start New Plan"));
+    expect(mockNavigate).toHaveBeenCalledWith("/questionnaire");
   });
 });

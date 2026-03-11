@@ -19,7 +19,9 @@ Flow: `Questionnaire → Step Functions execution → Parallel Reviews (Map stat
 
 - `apps/web/src/pages/` — 4 pages: Home, Questionnaire, Planning, Results
 - `apps/web/src/lib/store.ts` — Zustand wizard state
-- `apps/web/src/lib/config.ts` — API/Scaffold URLs from `VITE_*` env vars
+- `apps/web/src/config/amplify.ts` — Centralized Amplify + AWS SDK config from `VITE_*` env vars
+- `apps/web/src/lib/api.ts` — AWS SDK calls (SFN, Lambda) via Cognito identity pool credentials
+- `apps/web/src/lib/config.ts` — Re-exports from amplify config
 - `apps/functions/generate_plan/handler.py` — Initial plan generation (Lambda)
 - `apps/functions/review_step/handler.py` — Review iteration (Lambda, Map state)
 - `apps/functions/finalize_plan/handler.py` — Persist results to DynamoDB
@@ -59,5 +61,5 @@ cd apps/infra && npm test           # Jest assertion + snapshot tests
 ## Known Limitations
 
 - Refinement chat UI not yet built
-- No Cognito auth yet (CDK deploys Cognito but frontend doesn't use it)
 - Session storage for plan data (DynamoDB persistence planned)
+- Cognito auth wired up (Authenticator wrapper + identity pool credentials) but needs real user testing

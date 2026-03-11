@@ -1,115 +1,99 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createRepo, streamPlan } from '../src/lib/api';
 
-global.fetch = vi.fn();
+// Mock AWS SDK clients with class constructors
+const mockSend = vi.fn();
+vi.mock('@aws-sdk/client-sfn', () => ({
+  SFNClient: class { send = mockSend; },
+  StartExecutionCommand: class { input: unknown; constructor(input: unknown) { this.input = input; } },
+  DescribeExecutionCommand: class { input: unknown; constructor(input: unknown) { this.input = input; } },
+}));
+vi.mock('@aws-sdk/client-lambda', () => ({
+  LambdaClient: class { send = mockSend; },
+  InvokeCommand: class { input: unknown; constructor(input: unknown) { this.input = input; } },
+}));
+vi.mock('aws-amplify/auth', () => ({
+  fetchAuthSession: vi.fn().mockResolvedValue({ credentials: { accessKeyId: 'test', secretAccessKey: 'test' } }),
+}));
+vi.mock('@/config/amplify', () => ({
+  awsConfig: { region: 'us-east-1', userPoolId: 'pool', userPoolClientId: 'client', identityPoolId: 'identity' },
+  appConfig: { plansTable: 'test-table', workflowArn: 'arn:aws:states:us-east-1:123:stateMachine:test' },
+  scaffoldConfig: { url: 'http://localhost:3001', backendUrl: 'http://localhost:8001' },
+}));
 
-describe('createRepo', () => {
-  beforeEach(() => vi.clearAllMocks());
+import { startPlanExecution, pollExecution, exportToScaffold } from '../src/lib/api';
 
-  it('calls correct endpoint and returns data', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ repo_url: 'https://github.com/user/repo', files_created: ['README.md'] }),
-    });
-    const result = await createRepo('plan-1', 'my-repo', false, true);
-    expect(result.repo_url).toBe('https://github.com/user/repo');
-    expect(result.files_created).toContain('README.md');
-    const call = (global.fetch as any).mock.calls[0];
-    expect(call[0]).toContain('/api/v1/generate-repo');
-    expect(JSON.parse(call[1].body)).toMatchObject({ plan_id: 'plan-1', repo_name: 'my-repo', private: false });
-  });
+describe('startPlanExecution', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
 
-  it('includes github token header when provided', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ repo_url: 'url', files_created: [] }),
-    });
-    await createRepo('plan-1', 'repo', true, false, 'ghp_token');
-    const headers = (global.fetch as any).mock.calls[0][1].headers;
-    expect(headers['X-GitHub-Token']).toBe('ghp_token');
-  });
-
-  it('throws on non-ok response', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      statusText: 'Bad Request',
-      json: async () => ({ detail: 'Invalid plan' }),
-    });
-    await expect(createRepo('bad', 'repo', false, false)).rejects.toThrow('Invalid plan');
-  });
-
-  it('throws with statusText when json parse fails', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      statusText: 'Server Error',
-      json: async () => { throw new Error('not json'); },
-    });
-    await expect(createRepo('bad', 'repo', false, false)).rejects.toThrow('Server Error');
+  it('starts SFN execution and returns ARN', async () => {
+    mockSend.mockResolvedValueOnce({ executionArn: 'arn:aws:states:us-east-1:123:execution:test:run-1' });
+    const result = await startPlanExecution({ basics: { name: 'Test' } }, 'plan-123');
+    expect(result.executionArn).toBe('arn:aws:states:us-east-1:123:execution:test:run-1');
   });
 });
 
-describe('streamPlan', () => {
-  beforeEach(() => vi.clearAllMocks());
+describe('pollExecution', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
 
-  it('calls onEvent with error when fetch fails', async () => {
-    (global.fetch as any).mockResolvedValueOnce({ ok: false, body: null });
-    const onEvent = vi.fn();
-    streamPlan({ description: 'test' }, onEvent);
-    await vi.waitFor(() => expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({ error: true, done: true })));
+  it('returns plan data on SUCCEEDED', async () => {
+    mockSend.mockResolvedValueOnce({
+      Payload: new TextEncoder().encode(JSON.stringify({
+        statusCode: 200,
+        body: JSON.stringify({ status: 'SUCCEEDED', plan_id: 'p1', recommended: { name: 'Stack A' } }),
+      })),
+    });
+    const result = await pollExecution('arn:exec');
+    expect(result.status).toBe('SUCCEEDED');
+    expect(result.plan_id).toBe('p1');
   });
 
-  it('parses SSE data lines and calls onEvent', async () => {
-    const encoder = new TextEncoder();
-    const events = [
-      { step: 1, total: 2, message: 'Step 1', partial: null, done: false },
-      { step: 2, total: 2, message: 'Done', partial: null, done: true },
-    ];
-    const chunks = events.map(e => encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
-    let chunkIndex = 0;
-    const mockReader = {
-      read: vi.fn().mockImplementation(async () => {
-        if (chunkIndex < chunks.length) return { done: false, value: chunks[chunkIndex++] };
-        return { done: true, value: undefined };
-      }),
-    };
-    (global.fetch as any).mockResolvedValueOnce({ ok: true, body: { getReader: () => mockReader } });
-    const onEvent = vi.fn();
-    streamPlan({}, onEvent);
-    await vi.waitFor(() => expect(onEvent).toHaveBeenCalledTimes(2));
-    expect(onEvent.mock.calls[0][0].message).toBe('Step 1');
-    expect(onEvent.mock.calls[1][0].done).toBe(true);
+  it('returns RUNNING status when in progress', async () => {
+    mockSend.mockResolvedValueOnce({
+      Payload: new TextEncoder().encode(JSON.stringify({
+        statusCode: 200,
+        body: JSON.stringify({ status: 'RUNNING' }),
+      })),
+    });
+    const result = await pollExecution('arn:exec');
+    expect(result.status).toBe('RUNNING');
   });
 
-  it('returns cancel function that stops reading', async () => {
-    const reads: Array<() => void> = [];
-    const mockReader = {
-      read: vi.fn().mockImplementation(() => new Promise(r => reads.push(() => r({ done: true, value: undefined })))),
-    };
-    (global.fetch as any).mockResolvedValueOnce({ ok: true, body: { getReader: () => mockReader } });
-    const onEvent = vi.fn();
-    const cancel = streamPlan({}, onEvent);
-    // Wait for fetch to be called and reader.read to be pending
-    await vi.waitFor(() => expect(mockReader.read).toHaveBeenCalled());
-    cancel();
-    reads.forEach(r => r());
-    await new Promise(r => setTimeout(r, 10));
-    expect(onEvent).not.toHaveBeenCalled();
+  it('returns error on FAILED', async () => {
+    mockSend.mockResolvedValueOnce({
+      Payload: new TextEncoder().encode(JSON.stringify({
+        statusCode: 200,
+        body: JSON.stringify({ status: 'FAILED', error: 'Something broke' }),
+      })),
+    });
+    const result = await pollExecution('arn:exec');
+    expect(result.status).toBe('FAILED');
+    expect(result.error).toBe('Something broke');
+  });
+});
+
+describe('describeExecution', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('calls SFN DescribeExecution', async () => {
+    const { describeExecution } = await import('../src/lib/api');
+    mockSend.mockResolvedValueOnce({ status: 'RUNNING', startDate: new Date() });
+    const result = await describeExecution('arn:exec:test');
+    expect(result.status).toBe('RUNNING');
+  });
+});
+
+describe('exportToScaffold', () => {
+  beforeEach(() => { vi.clearAllMocks(); global.fetch = vi.fn(); });
+
+  it('sends plan data to Scaffold backend', async () => {
+    (global.fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({ sessionId: 'sess-1' }) });
+    const result = await exportToScaffold({ plan_id: 'p1' });
+    expect(result.sessionId).toBe('sess-1');
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:8001/api/import/plan', expect.objectContaining({ method: 'POST' }));
   });
 
-  it('skips malformed SSE lines', async () => {
-    const encoder = new TextEncoder();
-    const chunk = encoder.encode('data: not-json\ndata: {"step":1,"total":1,"message":"ok","partial":null,"done":true}\n\n');
-    let called = false;
-    const mockReader = {
-      read: vi.fn().mockImplementation(async () => {
-        if (!called) { called = true; return { done: false, value: chunk }; }
-        return { done: true, value: undefined };
-      }),
-    };
-    (global.fetch as any).mockResolvedValueOnce({ ok: true, body: { getReader: () => mockReader } });
-    const onEvent = vi.fn();
-    streamPlan({}, onEvent);
-    await vi.waitFor(() => expect(onEvent).toHaveBeenCalledTimes(1));
-    expect(onEvent.mock.calls[0][0].message).toBe('ok');
+  it('throws on failure', async () => {
+    (global.fetch as any).mockResolvedValueOnce({ ok: false });
+    await expect(exportToScaffold({})).rejects.toThrow('Scaffold export failed');
   });
 });

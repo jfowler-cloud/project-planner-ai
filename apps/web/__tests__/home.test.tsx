@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
@@ -8,8 +8,8 @@ vi.mock("@/components/ThemeProvider", () => ({
 
 import HomePage from "@/pages/Home";
 
-function renderPage() {
-  return render(<MemoryRouter><HomePage /></MemoryRouter>);
+function renderPage(props: { signOut?: () => void; userEmail?: string } = {}) {
+  return render(<MemoryRouter><HomePage {...props} /></MemoryRouter>);
 }
 
 describe("HomePage", () => {
@@ -44,5 +44,19 @@ describe("HomePage", () => {
   it("renders footer", () => {
     renderPage();
     expect(screen.getByText(/Built with/i)).toBeInTheDocument();
+  });
+
+  it("renders sign out button when signOut provided", () => {
+    const signOut = vi.fn();
+    renderPage({ signOut, userEmail: "test@test.com" });
+    const btn = screen.getByText("test@test.com · Sign out");
+    expect(btn).toBeInTheDocument();
+    fireEvent.click(btn);
+    expect(signOut).toHaveBeenCalled();
+  });
+
+  it("does not render sign out button when signOut not provided", () => {
+    renderPage();
+    expect(screen.queryByText(/Sign out/)).not.toBeInTheDocument();
   });
 });

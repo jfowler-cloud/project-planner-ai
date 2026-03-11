@@ -1,66 +1,62 @@
-import { API_URL } from "@/lib/config";
+/** AWS SDK calls via Cognito identity pool credentials. */
+import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws-sdk/client-sfn'
+import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
+import { fetchAuthSession } from 'aws-amplify/auth'
+import { awsConfig, appConfig, scaffoldConfig } from '@/config/amplify'
 
-export async function createRepo(
-  planId: string,
-  repoName: string,
-  isPrivate: boolean,
-  includeSop: boolean,
-  githubToken?: string
-): Promise<{ repo_url: string; files_created: string[] }> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (githubToken) headers["X-GitHub-Token"] = githubToken;
-
-  const r = await fetch(`${API_URL}/api/v1/generate-repo`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ plan_id: planId, repo_name: repoName, private: isPrivate, include_sop: includeSop }),
-  });
-
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({ detail: r.statusText }));
-    throw new Error(err.detail || "Failed to create repo");
+async function getClients() {
+  const session = await fetchAuthSession()
+  const config = { region: awsConfig.region, credentials: session.credentials }
+  return {
+    sfn: new SFNClient(config),
+    lambda: new LambdaClient(config),
   }
-  return r.json();
 }
 
-export function streamPlan(
-  questionnaire: Record<string, unknown>,
-  onEvent: (event: { step: number; total: number; message: string; partial: Record<string, unknown> | null; done: boolean; error?: boolean }) => void
-): () => void {
-  let cancelled = false;
+export interface StartPlanResult {
+  executionArn: string
+}
 
-  (async () => {
-    const r = await fetch(`${API_URL}/api/v1/plan/stream`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(questionnaire),
-    });
+export async function startPlanExecution(questionnaire: Record<string, unknown>, planId: string): Promise<StartPlanResult> {
+  const { sfn } = await getClients()
+  const resp = await sfn.send(new StartExecutionCommand({
+    stateMachineArn: appConfig.workflowArn,
+    input: JSON.stringify({ questionnaire, plan_id: planId }),
+  }))
+  return { executionArn: resp.executionArn! }
+}
 
-    if (!r.ok || !r.body) {
-      onEvent({ step: 0, total: 0, message: "Request failed", partial: null, done: true, error: true });
-      return;
-    }
+export interface PollResult {
+  status: string
+  plan_id?: string
+  recommended?: Record<string, unknown>
+  alternatives?: Record<string, unknown>[]
+  review_findings?: Record<string, unknown>[]
+  error?: string
+}
 
-    const reader = r.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+export async function pollExecution(executionArn: string): Promise<PollResult> {
+  const { lambda } = await getClients()
+  const resp = await lambda.send(new InvokeCommand({
+    FunctionName: 'project-planner-get_execution',
+    Payload: new TextEncoder().encode(JSON.stringify({ executionArn })),
+  }))
+  const payload = JSON.parse(new TextDecoder().decode(resp.Payload))
+  const body = typeof payload.body === 'string' ? JSON.parse(payload.body) : payload
+  return body as PollResult
+}
 
-    while (!cancelled) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            onEvent(data);
-          } catch { /* skip malformed */ }
-        }
-      }
-    }
-  })();
+export async function describeExecution(executionArn: string) {
+  const { sfn } = await getClients()
+  return sfn.send(new DescribeExecutionCommand({ executionArn }))
+}
 
-  return () => { cancelled = true; };
+export async function exportToScaffold(planData: Record<string, unknown>): Promise<{ sessionId: string }> {
+  const resp = await fetch(`${scaffoldConfig.backendUrl}/api/import/plan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(planData),
+  })
+  if (!resp.ok) throw new Error('Scaffold export failed')
+  return resp.json()
 }

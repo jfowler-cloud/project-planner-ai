@@ -5,19 +5,26 @@ import ScaffoldIntegration from '../src/components/ScaffoldIntegration';
 vi.mock('../src/lib/config', () => ({
   SCAFFOLD_URL: 'http://scaffold.test',
   SCAFFOLD_BACKEND_URL: 'http://scaffold-api.test',
-  API_URL: 'http://api.test',
+  scaffold: { url: 'http://scaffold.test', backendUrl: 'http://scaffold-api.test' },
+  app: { plansTable: 'test-table', workflowArn: '' },
 }));
 
 global.fetch = vi.fn();
 
 const mockPlan = {
   plan_id: 'plan-1',
-  basics: { name: 'My App', description: 'A test app' },
-  recommended_option: 'Serverless',
-  technology_stack: { frontend: 'React', backend: 'Lambda' },
-  technical: { user_count: '1000', uptime: '99.9%', data_size: '1GB' },
-  architecture_options: [],
-  selectedOptionIndex: null,
+  questionnaire: {
+    basics: { name: 'My App', description: 'A test app' },
+    technical: { user_count: '1000', uptime: '99.9%', data_size: '1GB' },
+  },
+  recommended: {
+    name: 'Serverless',
+    stack: { frontend: 'React', backend: 'Lambda' },
+    pros: ['cheap'],
+    cons: ['cold starts'],
+  },
+  alternatives: [],
+  selectedOptionIndex: 0,
 };
 
 describe('ScaffoldIntegration', () => {
@@ -44,8 +51,7 @@ describe('ScaffoldIntegration', () => {
     fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
     const closeBtn = screen.getAllByRole('button').find(b => b.className.includes('text-zinc-400'));
     fireEvent.click(closeBtn!);
-    // Panel should be hidden (translate-x-full)
-    expect(screen.queryByText('Open in Scaffold AI →')).toBeInTheDocument(); // still in DOM but hidden
+    expect(screen.queryByText('Open in Scaffold AI →')).toBeInTheDocument();
   });
 
   it('closes panel when overlay clicked', () => {
@@ -53,7 +59,6 @@ describe('ScaffoldIntegration', () => {
     fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
     const overlay = document.querySelector('.fixed.inset-0');
     fireEvent.click(overlay!);
-    // overlay gone
     expect(document.querySelector('.fixed.inset-0')).toBeNull();
   });
 
@@ -112,8 +117,8 @@ describe('ScaffoldIntegration', () => {
     });
     const planWithSelection = {
       ...mockPlan,
-      selectedOptionIndex: 0,
-      architecture_options: [{ name: 'Microservices', stack: { api: 'FastAPI' } }],
+      selectedOptionIndex: 1,
+      alternatives: [{ name: 'Microservices', stack: { api: 'FastAPI' }, pros: [], cons: [] }],
     };
     render(<ScaffoldIntegration projectPlan={planWithSelection} />);
     fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
@@ -121,5 +126,77 @@ describe('ScaffoldIntegration', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
     expect(body.architecture).toBe('Microservices');
+  });
+
+  it('shows technology count when stack available', () => {
+    render(<ScaffoldIntegration projectPlan={mockPlan} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    expect(screen.getByText('• 2 technologies')).toBeInTheDocument();
+  });
+
+  it('handles plan without questionnaire', () => {
+    const minimalPlan = {
+      plan_id: 'plan-2',
+      recommended: { name: 'Minimal', pros: [], cons: [] },
+      alternatives: [],
+    };
+    render(<ScaffoldIntegration projectPlan={minimalPlan} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    expect(screen.getByText(/Untitled/)).toBeInTheDocument();
+    expect(screen.getByText(/Minimal/)).toBeInTheDocument();
+  });
+
+  it('handles plan without stack in recommended', async () => {
+    const noStackPlan = {
+      plan_id: 'plan-3',
+      questionnaire: { basics: { name: 'No Stack', description: 'test' } },
+      recommended: { name: 'Simple', pros: [], cons: [] },
+      alternatives: [],
+    };
+    (global.fetch as any).mockResolvedValueOnce({ ok: false });
+    render(<ScaffoldIntegration projectPlan={noStackPlan} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    // No technology count shown when no stack
+    expect(screen.queryByText(/technologies/)).not.toBeInTheDocument();
+    // Export still works (fallback path)
+    fireEvent.click(screen.getByText('Open in Scaffold AI →'));
+    await waitFor(() => expect(window.open).toHaveBeenCalled());
+  });
+
+  it('falls back to recommended when selectedOptionIndex is out of bounds', () => {
+    const badIndexPlan = {
+      ...mockPlan,
+      selectedOptionIndex: 99,
+    };
+    render(<ScaffoldIntegration projectPlan={badIndexPlan} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    expect(screen.getByText(/Serverless/)).toBeInTheDocument();
+  });
+
+  it('exports plan without questionnaire data', async () => {
+    const minimalPlan = {
+      plan_id: 'plan-min',
+      recommended: { name: 'Minimal', pros: [], cons: [] },
+      alternatives: [],
+    };
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ session_id: 'sess-min' }),
+    });
+    render(<ScaffoldIntegration projectPlan={minimalPlan} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    fireEvent.click(screen.getByText('Open in Scaffold AI →'));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+    expect(body.project_name).toBe('Untitled');
+    expect(body.architecture).toBe('Minimal');
+  });
+
+  it('defaults selectedOptionIndex to 0 when not set', () => {
+    const noIndexPlan = { ...mockPlan };
+    delete (noIndexPlan as any).selectedOptionIndex;
+    render(<ScaffoldIntegration projectPlan={noIndexPlan} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    expect(screen.getByText(/Serverless/)).toBeInTheDocument();
   });
 });
