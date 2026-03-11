@@ -17,11 +17,38 @@ export interface StartPlanResult {
   executionArn: string
 }
 
-export async function startPlanExecution(questionnaire: Record<string, unknown>, planId: string): Promise<StartPlanResult> {
+export async function startPlanExecution(
+  questionnaire: Record<string, unknown>,
+  planId: string,
+  options?: { generateOnly?: boolean },
+): Promise<StartPlanResult> {
   const { sfn } = await getClients()
   const resp = await sfn.send(new StartExecutionCommand({
     stateMachineArn: appConfig.workflowArn,
-    input: JSON.stringify({ questionnaire, plan_id: planId }),
+    input: JSON.stringify({
+      questionnaire,
+      plan_id: planId,
+      ...(options?.generateOnly && { generateOnly: true }),
+    }),
+  }))
+  return { executionArn: resp.executionArn! }
+}
+
+export async function startReviewExecution(
+  questionnaire: Record<string, unknown>,
+  recommended: Record<string, unknown>,
+  planId: string,
+): Promise<StartPlanResult> {
+  const { sfn } = await getClients()
+  const resp = await sfn.send(new StartExecutionCommand({
+    stateMachineArn: appConfig.workflowArn,
+    name: `review-${planId}-${Date.now()}`,
+    input: JSON.stringify({
+      reviewOnly: true,
+      questionnaire,
+      recommended,
+      plan_id: planId,
+    }),
   }))
   return { executionArn: resp.executionArn! }
 }

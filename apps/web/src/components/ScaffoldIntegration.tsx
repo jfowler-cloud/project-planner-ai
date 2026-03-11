@@ -153,11 +153,10 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
               )}
 
               <button
-                onClick={handleExportToScaffold}
-                disabled={!projectPlan}
-                className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                onClick={() => alert("Scaffold AI integration is on the roadmap. For now, use Copy Description or export your review summary from the Findings Summary section.")}
+                className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg opacity-60 cursor-default font-medium"
               >
-                Open in Scaffold AI →
+                Open in Scaffold AI — Coming Soon
               </button>
             </div>
 

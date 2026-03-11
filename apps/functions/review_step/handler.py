@@ -41,7 +41,10 @@ mono-repo structure, Cloudscape UI, Lambda Powertools, DynamoDB, Cognito auth,
 CDK v2 infra, S3 + CloudFront hosting, 95%+ test coverage targets, and GitHub
 Actions CI. Flag any deviations as findings and recommend corrections.
 
-Respond with JSON:
+Keep each finding and recommendation to ONE concise sentence.
+Limit to at most 5 findings and 3 recommendations.
+
+Respond with ONLY valid JSON (no markdown, no extra text):
 {{
   "findings": ["finding 1", "finding 2"],
   "recommendations": ["recommendation 1"],

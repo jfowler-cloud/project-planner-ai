@@ -28,7 +28,7 @@ class AppConfig(BaseSettings):
         "premium":   "us.anthropic.claude-opus-4-5-20251101-v1:0",
     }
 
-    bedrock_max_tokens: int = 4096
+    bedrock_max_tokens: int = 8192
     bedrock_temperature: float = 0.3
 
     # Review pipeline

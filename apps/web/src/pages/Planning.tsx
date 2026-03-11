@@ -6,28 +6,20 @@ import type { PollResult } from "@/lib/api";
 
 const POLL_INTERVAL = 3000;
 
-interface ArchOption {
-  name: string;
-  description?: string;
-}
-
 export default function PlanningPage() {
   const navigate = useNavigate();
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("Initializing...");
-  const [options, setOptions] = useState<ArchOption[]>([]);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [reviewCount, setReviewCount] = useState(3);
   const executionArnRef = useRef<string | null>(null);
 
   const handleResult = useCallback((result: PollResult) => {
     if (result.status === "RUNNING") {
-      setProgress((prev) => Math.min(prev + 5, 85));
-      setStatus("AI is generating your plan...");
+      setProgress((prev) => Math.min(prev + 8, 90));
+      setStatus("AI is generating architecture options...");
     } else if (result.status === "SUCCEEDED") {
       setProgress(100);
-      setStatus("Plan completed!");
+      setStatus("Options ready!");
       const projectRequest = sessionStorage.getItem("projectRequest");
       const questionnaire = projectRequest ? JSON.parse(projectRequest) : undefined;
       const planData = {
@@ -35,23 +27,22 @@ export default function PlanningPage() {
         questionnaire,
         recommended: result.recommended,
         alternatives: result.alternatives,
-        review_findings: result.review_findings,
-        selectedOptionIndex: selectedOption ?? 0,
+        review_findings: [],
+        selectedOptionIndex: 0,
       };
       sessionStorage.setItem("projectPlan", JSON.stringify(planData));
-      setTimeout(() => navigate(`/results/${result.plan_id}`), 1000);
+      setTimeout(() => navigate(`/results/${result.plan_id}`), 600);
     } else if (result.status === "FAILED" || result.status === "TIMED_OUT" || result.status === "ABORTED") {
       setError(result.error || `Execution ${result.status.toLowerCase()}`);
       setStatus("Error");
     }
-  }, [navigate, selectedOption]);
+  }, [navigate]);
 
   useEffect(() => {
     const projectRequest = sessionStorage.getItem("projectRequest");
     if (!projectRequest) { navigate("/questionnaire"); return; }
 
     const request = JSON.parse(projectRequest);
-    setReviewCount(request.review_count || 3);
 
     let cancelled = false;
     let pollTimer: ReturnType<typeof setInterval>;
@@ -62,9 +53,9 @@ export default function PlanningPage() {
         setProgress(10);
         setStatus("Starting plan generation...");
 
-        const { executionArn } = await startPlanExecution(request, planId);
+        const { executionArn } = await startPlanExecution(request, planId, { generateOnly: true });
         executionArnRef.current = executionArn;
-        setProgress(20);
+        setProgress(25);
         setStatus("Analyzing requirements...");
 
         pollTimer = setInterval(async () => {
@@ -101,7 +92,7 @@ export default function PlanningPage() {
       <div className="max-w-2xl w-full mx-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">
-            {error ? "Error" : "AI Planning in Progress"}
+            {error ? "Error" : "Generating Architecture Options"}
           </h1>
 
           {error ? (
@@ -126,9 +117,8 @@ export default function PlanningPage() {
               <div className="space-y-3 mb-8">
                 {[
                   { threshold: 10, label: "Starting execution" },
-                  { threshold: 20, label: "Analyzing requirements" },
-                  { threshold: 40, label: "Generating architecture options" },
-                  { threshold: 70, label: `Performing critical reviews (${reviewCount} categories)` },
+                  { threshold: 25, label: "Analyzing requirements" },
+                  { threshold: 50, label: "Generating architecture options" },
                   { threshold: 100, label: "Complete!" },
                 ].map(({ threshold, label }) => (
                   <div key={label} className={`flex items-center ${progress >= threshold ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>

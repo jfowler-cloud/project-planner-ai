@@ -20,7 +20,7 @@ vi.mock('@/config/amplify', () => ({
   scaffoldConfig: { url: 'http://localhost:3001', backendUrl: 'http://localhost:8001' },
 }));
 
-import { startPlanExecution, pollExecution, exportToScaffold } from '../src/lib/api';
+import { startPlanExecution, startReviewExecution, pollExecution, exportToScaffold } from '../src/lib/api';
 
 describe('startPlanExecution', () => {
   beforeEach(() => { vi.clearAllMocks(); });
@@ -29,6 +29,22 @@ describe('startPlanExecution', () => {
     mockSend.mockResolvedValueOnce({ executionArn: 'arn:aws:states:us-east-1:123:execution:test:run-1' });
     const result = await startPlanExecution({ basics: { name: 'Test' } }, 'plan-123');
     expect(result.executionArn).toBe('arn:aws:states:us-east-1:123:execution:test:run-1');
+  });
+
+  it('passes generateOnly flag when specified', async () => {
+    mockSend.mockResolvedValueOnce({ executionArn: 'arn:exec' });
+    await startPlanExecution({ basics: {} }, 'plan-1', { generateOnly: true });
+    expect(mockSend).toHaveBeenCalled();
+  });
+});
+
+describe('startReviewExecution', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('starts review-only SFN execution and returns ARN', async () => {
+    mockSend.mockResolvedValueOnce({ executionArn: 'arn:aws:states:us-east-1:123:execution:test:review-1' });
+    const result = await startReviewExecution({ basics: {} }, { name: 'Stack A' }, 'plan-123');
+    expect(result.executionArn).toBe('arn:aws:states:us-east-1:123:execution:test:review-1');
   });
 });
 

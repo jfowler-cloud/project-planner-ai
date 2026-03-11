@@ -1,5 +1,10 @@
 /**
  * WorkflowStack — Step Functions workflow + Cognito identity pool role bindings.
+ *
+ * Supports three modes via input flags:
+ *   { generateOnly: true }  → GeneratePlan only, skip reviews
+ *   { reviewOnly: true }    → Reviews only on a supplied architecture
+ *   (neither)               → Full flow: generate → reviews → finalize
  */
 import * as cdk from 'aws-cdk-lib'
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions'
@@ -18,6 +23,16 @@ const REVIEW_CATEGORIES = [
   'compliance', 'observability', 'disaster_recovery',
 ]
 
+function reviewItemParams() {
+  return REVIEW_CATEGORIES.map((cat, i) => ({
+    category: cat,
+    iteration: i + 1,
+    'questionnaire.$': '$.questionnaire',
+    'recommended.$': '$.recommended',
+    'review_findings.$': '$.review_findings',
+  }))
+}
+
 interface WorkflowStackProps extends cdk.StackProps {
   db: DatabaseStack
   fns: FunctionsStack
@@ -31,42 +46,106 @@ export class WorkflowStack extends cdk.Stack {
 
     const { db, fns } = props
 
-    // ── Step Functions tasks ─────────────────────────────────────────────────
-    const generatePlan = new tasks.LambdaInvoke(this, 'GeneratePlan', { lambdaFunction: fns.generatePlanFn, outputPath: '$.Payload' })
-
-    const reviewMap = new sfn.Map(this, 'ReviewCategories', {
-      itemsPath: sfn.JsonPath.stringAt('$.reviewItems'),
-      maxConcurrency: 3,
-      resultPath: '$.reviewResults',
+    // ── Generate path ────────────────────────────────────────────────────────
+    const generatePlan = new tasks.LambdaInvoke(this, 'GeneratePlan', {
+      lambdaFunction: fns.generatePlanFn, outputPath: '$.Payload',
     })
 
-    const reviewStep = new tasks.LambdaInvoke(this, 'ReviewStep', { lambdaFunction: fns.reviewStepFn, outputPath: '$.Payload' })
-    reviewMap.itemProcessor(reviewStep)
-
-    const finalizePlan = new tasks.LambdaInvoke(this, 'FinalizePlan', { lambdaFunction: fns.finalizePlanFn, outputPath: '$.Payload' })
-
-    const prepareReviews = new sfn.Pass(this, 'PrepareReviews', {
+    const formatGenerateOutput = new sfn.Pass(this, 'FormatGenerateOutput', {
       parameters: {
         'plan_id.$': '$.plan_id',
         'questionnaire.$': '$.questionnaire',
         'recommended.$': '$.recommended',
         'alternatives.$': '$.alternatives',
         'review_findings.$': '$.review_findings',
-        reviewItems: REVIEW_CATEGORIES.map((cat, i) => ({
-          category: cat,
-          iteration: i + 1,
-          'questionnaire.$': '$.questionnaire',
-          'recommended.$': '$.recommended',
-          'review_findings.$': '$.review_findings',
-        })),
+        status: 'COMPLETED',
       },
     })
 
-    const definition = generatePlan.next(prepareReviews).next(reviewMap).next(finalizePlan)
+    // Full-flow review chain (after generate)
+    const fullPrepareReviews = new sfn.Pass(this, 'PrepareReviews', {
+      parameters: {
+        'plan_id.$': '$.plan_id',
+        'questionnaire.$': '$.questionnaire',
+        'recommended.$': '$.recommended',
+        'alternatives.$': '$.alternatives',
+        'review_findings.$': '$.review_findings',
+        reviewItems: reviewItemParams(),
+      },
+    })
+
+    const fullReviewMap = new sfn.Map(this, 'ReviewCategories', {
+      itemsPath: sfn.JsonPath.stringAt('$.reviewItems'),
+      maxConcurrency: 3,
+      resultPath: '$.reviewResults',
+    })
+    fullReviewMap.itemProcessor(
+      new tasks.LambdaInvoke(this, 'ReviewStep', { lambdaFunction: fns.reviewStepFn, outputPath: '$.Payload' }),
+    )
+
+    const fullFinalize = new tasks.LambdaInvoke(this, 'FinalizePlan', {
+      lambdaFunction: fns.finalizePlanFn, outputPath: '$.Payload',
+    })
+
+    const fullReviewChain = fullPrepareReviews.next(fullReviewMap).next(fullFinalize)
+
+    const isGenerateOnly = new sfn.Choice(this, 'IsGenerateOnly')
+      .when(sfn.Condition.and(
+        sfn.Condition.isPresent('$.generateOnly'),
+        sfn.Condition.booleanEquals('$.generateOnly', true),
+      ), formatGenerateOutput)
+      .otherwise(fullReviewChain)
+
+    const generatePath = generatePlan.next(isGenerateOnly)
+
+    // ── Review-only path ─────────────────────────────────────────────────────
+    const prepareReviewOnlyInput = new sfn.Pass(this, 'PrepareReviewOnlyInput', {
+      parameters: {
+        'plan_id.$': '$.plan_id',
+        'questionnaire.$': '$.questionnaire',
+        'recommended.$': '$.recommended',
+        alternatives: [],
+        review_findings: [],
+      },
+    })
+
+    const prepareReviewOnlyItems = new sfn.Pass(this, 'PrepareReviewOnlyItems', {
+      parameters: {
+        'plan_id.$': '$.plan_id',
+        'questionnaire.$': '$.questionnaire',
+        'recommended.$': '$.recommended',
+        'alternatives.$': '$.alternatives',
+        'review_findings.$': '$.review_findings',
+        reviewItems: reviewItemParams(),
+      },
+    })
+
+    const reviewOnlyMap = new sfn.Map(this, 'ReviewOnlyCategories', {
+      itemsPath: sfn.JsonPath.stringAt('$.reviewItems'),
+      maxConcurrency: 3,
+      resultPath: '$.reviewResults',
+    })
+    reviewOnlyMap.itemProcessor(
+      new tasks.LambdaInvoke(this, 'ReviewOnlyStep', { lambdaFunction: fns.reviewStepFn, outputPath: '$.Payload' }),
+    )
+
+    const reviewOnlyFinalize = new tasks.LambdaInvoke(this, 'ReviewOnlyFinalize', {
+      lambdaFunction: fns.finalizePlanFn, outputPath: '$.Payload',
+    })
+
+    const reviewOnlyPath = prepareReviewOnlyInput.next(prepareReviewOnlyItems).next(reviewOnlyMap).next(reviewOnlyFinalize)
+
+    // ── Top-level routing ────────────────────────────────────────────────────
+    const router = new sfn.Choice(this, 'RouteMode')
+      .when(sfn.Condition.and(
+        sfn.Condition.isPresent('$.reviewOnly'),
+        sfn.Condition.booleanEquals('$.reviewOnly', true),
+      ), reviewOnlyPath)
+      .otherwise(generatePath)
 
     const stateMachine = new sfn.StateMachine(this, 'PlannerWorkflow', {
       stateMachineName: 'ProjectPlanner-Workflow',
-      definitionBody: sfn.DefinitionBody.fromChainable(definition),
+      definitionBody: sfn.DefinitionBody.fromChainable(router),
       timeout: cdk.Duration.minutes(30),
     })
 

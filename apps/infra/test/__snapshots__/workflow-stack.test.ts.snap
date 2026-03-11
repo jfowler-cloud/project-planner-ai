@@ -656,18 +656,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
               ],
               "Effect": "Allow",
               "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:bedrock:",
-                      {
-                        "Ref": "AWS::Region",
-                      },
-                      "::foundation-model/*",
-                    ],
-                  ],
-                },
+                "arn:aws:bedrock:*::foundation-model/*",
                 {
                   "Fn::Join": [
                     "",
@@ -892,18 +881,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
               ],
               "Effect": "Allow",
               "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:bedrock:",
-                      {
-                        "Ref": "AWS::Region",
-                      },
-                      "::foundation-model/*",
-                    ],
-                  ],
-                },
+                "arn:aws:bedrock:*::foundation-model/*",
                 {
                   "Fn::Join": [
                     "",
@@ -1241,18 +1219,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
               ],
               "Effect": "Allow",
               "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:bedrock:",
-                      {
-                        "Ref": "AWS::Region",
-                      },
-                      "::foundation-model/*",
-                    ],
-                  ],
-                },
+                "arn:aws:bedrock:*::foundation-model/*",
                 {
                   "Fn::Join": [
                     "",
@@ -1357,7 +1324,7 @@ exports[`ProjectPlanner Multi-Stack WorkflowStack matches snapshot 1`] = `
           "Fn::Join": [
             "",
             [
-              "{"StartAt":"GeneratePlan","States":{"GeneratePlan":{"Next":"PrepareReviews","Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","OutputPath":"$.Payload","Resource":"arn:",
+              "{"StartAt":"RouteMode","States":{"RouteMode":{"Type":"Choice","Choices":[{"And":[{"Variable":"$.reviewOnly","IsPresent":true},{"Variable":"$.reviewOnly","BooleanEquals":true}],"Next":"PrepareReviewOnlyInput"}],"Default":"GeneratePlan"},"GeneratePlan":{"Next":"IsGenerateOnly","Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","OutputPath":"$.Payload","Resource":"arn:",
               {
                 "Ref": "AWS::Partition",
               },
@@ -1365,7 +1332,7 @@ exports[`ProjectPlanner Multi-Stack WorkflowStack matches snapshot 1`] = `
               {
                 "Fn::ImportValue": "TestFns:ExportsOutputFnGetAttGeneratePlanFn81B4B509Arn79899A98",
               },
-              "","Payload.$":"$"}},"PrepareReviews":{"Type":"Pass","Parameters":{"plan_id.$":"$.plan_id","questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","alternatives.$":"$.alternatives","review_findings.$":"$.review_findings","reviewItems":[{"category":"security","iteration":1,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"scalability","iteration":2,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"cost_optimization","iteration":3,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"reliability","iteration":4,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"performance","iteration":5,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"maintainability","iteration":6,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"developer_experience","iteration":7,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"compliance","iteration":8,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"observability","iteration":9,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"disaster_recovery","iteration":10,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"}]},"Next":"ReviewCategories"},"ReviewCategories":{"Type":"Map","ResultPath":"$.reviewResults","Next":"FinalizePlan","ItemsPath":"$.reviewItems","ItemProcessor":{"ProcessorConfig":{"Mode":"INLINE"},"StartAt":"ReviewStep","States":{"ReviewStep":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","OutputPath":"$.Payload","Resource":"arn:",
+              "","Payload.$":"$"}},"IsGenerateOnly":{"Type":"Choice","Choices":[{"And":[{"Variable":"$.generateOnly","IsPresent":true},{"Variable":"$.generateOnly","BooleanEquals":true}],"Next":"FormatGenerateOutput"}],"Default":"PrepareReviews"},"PrepareReviews":{"Type":"Pass","Parameters":{"plan_id.$":"$.plan_id","questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","alternatives.$":"$.alternatives","review_findings.$":"$.review_findings","reviewItems":[{"category":"security","iteration":1,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"scalability","iteration":2,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"cost_optimization","iteration":3,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"reliability","iteration":4,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"performance","iteration":5,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"maintainability","iteration":6,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"developer_experience","iteration":7,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"compliance","iteration":8,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"observability","iteration":9,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"disaster_recovery","iteration":10,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"}]},"Next":"ReviewCategories"},"ReviewCategories":{"Type":"Map","ResultPath":"$.reviewResults","Next":"FinalizePlan","ItemsPath":"$.reviewItems","ItemProcessor":{"ProcessorConfig":{"Mode":"INLINE"},"StartAt":"ReviewStep","States":{"ReviewStep":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","OutputPath":"$.Payload","Resource":"arn:",
               {
                 "Ref": "AWS::Partition",
               },
@@ -1374,6 +1341,22 @@ exports[`ProjectPlanner Multi-Stack WorkflowStack matches snapshot 1`] = `
                 "Fn::ImportValue": "TestFns:ExportsOutputFnGetAttReviewStepFn737002FEArn1CEB1268",
               },
               "","Payload.$":"$"}}}},"MaxConcurrency":3},"FinalizePlan":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","OutputPath":"$.Payload","Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::ImportValue": "TestFns:ExportsOutputFnGetAttFinalizePlanFnB917561DArn0216B778",
+              },
+              "","Payload.$":"$"}},"FormatGenerateOutput":{"Type":"Pass","Parameters":{"plan_id.$":"$.plan_id","questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","alternatives.$":"$.alternatives","review_findings.$":"$.review_findings","status":"COMPLETED"},"End":true},"PrepareReviewOnlyInput":{"Type":"Pass","Parameters":{"plan_id.$":"$.plan_id","questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","alternatives":[],"review_findings":[]},"Next":"PrepareReviewOnlyItems"},"PrepareReviewOnlyItems":{"Type":"Pass","Parameters":{"plan_id.$":"$.plan_id","questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","alternatives.$":"$.alternatives","review_findings.$":"$.review_findings","reviewItems":[{"category":"security","iteration":1,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"scalability","iteration":2,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"cost_optimization","iteration":3,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"reliability","iteration":4,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"performance","iteration":5,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"maintainability","iteration":6,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"developer_experience","iteration":7,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"compliance","iteration":8,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"observability","iteration":9,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"},{"category":"disaster_recovery","iteration":10,"questionnaire.$":"$.questionnaire","recommended.$":"$.recommended","review_findings.$":"$.review_findings"}]},"Next":"ReviewOnlyCategories"},"ReviewOnlyCategories":{"Type":"Map","ResultPath":"$.reviewResults","Next":"ReviewOnlyFinalize","ItemsPath":"$.reviewItems","ItemProcessor":{"ProcessorConfig":{"Mode":"INLINE"},"StartAt":"ReviewOnlyStep","States":{"ReviewOnlyStep":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","OutputPath":"$.Payload","Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::ImportValue": "TestFns:ExportsOutputFnGetAttReviewStepFn737002FEArn1CEB1268",
+              },
+              "","Payload.$":"$"}}}},"MaxConcurrency":3},"ReviewOnlyFinalize":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","OutputPath":"$.Payload","Resource":"arn:",
               {
                 "Ref": "AWS::Partition",
               },

@@ -60,15 +60,15 @@ describe("PlanningPage", () => {
     mockStartPlan.mockResolvedValueOnce({ executionArn: "arn:test" });
     mockPollExecution.mockResolvedValue({ status: "RUNNING" });
     await act(async () => { renderPage(); });
-    expect(screen.getByText(/AI Planning in Progress/)).toBeInTheDocument();
+    expect(screen.getByText(/Generating Architecture Options/)).toBeInTheDocument();
   });
 
-  it("starts SFN execution on mount", async () => {
+  it("starts SFN execution with generateOnly flag on mount", async () => {
     (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
     mockStartPlan.mockResolvedValueOnce({ executionArn: "arn:test" });
     mockPollExecution.mockResolvedValue({ status: "RUNNING" });
     await act(async () => { renderPage(); });
-    expect(mockStartPlan).toHaveBeenCalledWith(mockRequest, "test-uuid-1234");
+    expect(mockStartPlan).toHaveBeenCalledWith(mockRequest, "test-uuid-1234", { generateOnly: true });
   });
 
   it("shows error when SFN start fails", async () => {
@@ -92,7 +92,7 @@ describe("PlanningPage", () => {
     await act(async () => { renderPage(); });
     // Advance past poll interval
     await act(async () => { vi.advanceTimersByTime(4000); });
-    await waitFor(() => { expect(screen.getByText("Plan completed!")).toBeInTheDocument(); });
+    await waitFor(() => { expect(screen.getByText("Options ready!")).toBeInTheDocument(); });
   });
 
   it("shows error on FAILED poll", async () => {
@@ -120,7 +120,7 @@ describe("PlanningPage", () => {
     await act(async () => { renderPage(); });
     expect(screen.getByText("Starting execution")).toBeInTheDocument();
     expect(screen.getByText("Analyzing requirements")).toBeInTheDocument();
-    expect(screen.getByText(/Performing critical reviews/)).toBeInTheDocument();
+    expect(screen.getByText("Generating architecture options")).toBeInTheDocument();
   });
 
   it("increments progress on RUNNING poll", async () => {
@@ -129,7 +129,7 @@ describe("PlanningPage", () => {
     mockPollExecution.mockResolvedValue({ status: "RUNNING" });
     await act(async () => { renderPage(); });
     await act(async () => { vi.advanceTimersByTime(4000); });
-    expect(screen.getByText(/AI is generating your plan/)).toBeInTheDocument();
+    expect(screen.getByText(/AI is generating architecture options/)).toBeInTheDocument();
   });
 
   it("shows error when polling fails", async () => {
@@ -141,7 +141,7 @@ describe("PlanningPage", () => {
     await waitFor(() => { expect(screen.getByText("Network error")).toBeInTheDocument(); });
   });
 
-  it("stores plan data in sessionStorage on SUCCEEDED", async () => {
+  it("stores plan data with empty review_findings in sessionStorage on SUCCEEDED", async () => {
     (window.sessionStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(JSON.stringify(mockRequest));
     mockStartPlan.mockResolvedValueOnce({ executionArn: "arn:test" });
     mockPollExecution.mockResolvedValueOnce({
@@ -154,6 +154,11 @@ describe("PlanningPage", () => {
     await act(async () => { renderPage(); });
     await act(async () => { vi.advanceTimersByTime(4000); });
     await waitFor(() => { expect(window.sessionStorage.setItem).toHaveBeenCalledWith("projectPlan", expect.any(String)); });
+    const storedCall = (window.sessionStorage.setItem as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: string[]) => c[0] === "projectPlan"
+    );
+    const stored = JSON.parse(storedCall[1]);
+    expect(stored.review_findings).toEqual([]);
   });
 
   it("handles ABORTED status", async () => {
@@ -182,7 +187,7 @@ describe("PlanningPage", () => {
       plan_id: "p2",
       recommended: { name: "Stack B" },
       alternatives: [{ name: "Stack C" }],
-      review_findings: [{ category: "security", findings: ["test"], recommendations: [], risk_level: "low" }],
+      review_findings: [],
     });
     await act(async () => { renderPage(); });
     await act(async () => { vi.advanceTimersByTime(4000); });
