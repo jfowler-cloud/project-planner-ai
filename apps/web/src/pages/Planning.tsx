@@ -107,7 +107,7 @@ export default function PlanningPage() {
           {error ? (
             <div className="text-center">
               <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-              <button onClick={() => navigate("/questionnaire")} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <button onClick={() => navigate("/questionnaire")} className="px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700">
                 Try Again
               </button>
             </div>
@@ -119,7 +119,7 @@ export default function PlanningPage() {
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{progress}%</span>
                 </div>
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-600 transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+                  <div className="h-full bg-accent-600 transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
                 </div>
               </div>
 
@@ -139,7 +139,7 @@ export default function PlanningPage() {
               </div>
 
               <div className="flex justify-center mt-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-600 dark:border-accent-400"></div>
               </div>
             </>
           )}

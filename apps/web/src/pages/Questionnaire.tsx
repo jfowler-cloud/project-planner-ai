@@ -11,7 +11,7 @@ const basicsSchema = z.object({
   target_users: z.string().min(3, "Target users must be at least 3 characters").max(200, "Too long (max 200 chars)"),
 });
 
-const inputCls = "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500";
+const inputCls = "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-500";
 const labelCls = "block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300";
 
 interface Props {
@@ -85,7 +85,7 @@ export default function QuestionnairePage({ signOut, userEmail }: Props) {
       <nav className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">Project Planner AI</h1>
+            <h1 className="text-xl font-bold text-accent-600 dark:text-accent-400">Project Planner AI</h1>
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <button onClick={fillDemoData} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm">
@@ -106,13 +106,13 @@ export default function QuestionnairePage({ signOut, userEmail }: Props) {
         <div className="mb-8">
           <div className="flex justify-between mb-2">
             {["1. Basics", "2. Technical", "3. Preferences"].map((label, i) => (
-              <span key={label} className={`text-sm ${step >= i + 1 ? "text-blue-600 dark:text-blue-400 font-semibold" : "text-gray-400 dark:text-gray-500"}`}>
+              <span key={label} className={`text-sm ${step >= i + 1 ? "text-accent-600 dark:text-accent-400 font-semibold" : "text-gray-400 dark:text-gray-500"}`}>
                 {label}
               </span>
             ))}
           </div>
           <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
-            <div className="h-2 bg-blue-600 rounded-full transition-all" style={{ width: `${(step / 3) * 100}%` }} />
+            <div className="h-2 bg-accent-600 rounded-full transition-all" style={{ width: `${(step / 3) * 100}%` }} />
           </div>
         </div>
 
@@ -151,7 +151,7 @@ export default function QuestionnairePage({ signOut, userEmail }: Props) {
                 </div>
               </div>
               <div className="flex justify-end mt-6">
-                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Next</button>
+                <button type="submit" className="px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700">Next</button>
               </div>
             </div>
           </form>
@@ -211,7 +211,7 @@ export default function QuestionnairePage({ signOut, userEmail }: Props) {
             </div>
             <div className="flex justify-between mt-6">
               <button onClick={() => setStep(1)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Back</button>
-              <button onClick={() => setStep(3)} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Next</button>
+              <button onClick={() => setStep(3)} className="px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700">Next</button>
             </div>
           </div>
         )}
@@ -253,7 +253,7 @@ export default function QuestionnairePage({ signOut, userEmail }: Props) {
               <div>
                 <label className={labelCls}>Critical Review Passes</label>
                 <div className="flex items-center gap-4">
-                  <input type="range" min="1" max="10" value={reviewCount} onChange={(e) => setReviewCount(Number(e.target.value))} className="flex-1 accent-blue-600" />
+                  <input type="range" min="1" max="10" value={reviewCount} onChange={(e) => setReviewCount(Number(e.target.value))} className="flex-1 accent-accent-600" />
                   <span className="text-lg font-semibold w-8 text-center text-gray-900 dark:text-white">{reviewCount}</span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">More reviews = better quality but slower (default: 3)</p>
@@ -261,7 +261,7 @@ export default function QuestionnairePage({ signOut, userEmail }: Props) {
             </div>
             <div className="flex justify-between mt-6">
               <button onClick={() => setStep(2)} className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Back</button>
-              <button onClick={handleSubmit} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Generate Plan</button>
+              <button onClick={handleSubmit} className="px-6 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700">Generate Plan</button>
             </div>
           </div>
         )}

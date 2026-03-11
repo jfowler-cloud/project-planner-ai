@@ -8,14 +8,14 @@ interface Props {
 
 export default function HomePage({ signOut, userEmail }: Props) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-b from-accent-50 to-white dark:from-gray-900 dark:to-gray-800">
       <nav className="border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">Project Planner AI</h1>
+            <h1 className="text-2xl font-bold text-accent-600 dark:text-accent-400">Project Planner AI</h1>
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <Link to="/questionnaire" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <Link to="/questionnaire" className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition">
                 Start Planning
               </Link>
               {signOut && (
@@ -37,7 +37,7 @@ export default function HomePage({ signOut, userEmail }: Props) {
             AI-assisted project planning using proven methodologies.
             Get comprehensive architecture plans, cost estimates, and ready-to-use GitHub repositories in minutes.
           </p>
-          <Link to="/questionnaire" className="inline-block px-8 py-4 bg-blue-600 text-white text-lg rounded-lg hover:bg-blue-700 transition shadow-lg">
+          <Link to="/questionnaire" className="inline-block px-8 py-4 bg-accent-600 text-white text-lg rounded-lg hover:bg-accent-700 transition shadow-lg">
             Get Started Free
           </Link>
         </div>
@@ -66,7 +66,7 @@ export default function HomePage({ signOut, userEmail }: Props) {
               { n: 4, title: "Generate Project", desc: "Create GitHub repository with comprehensive documentation and setup" },
             ].map(({ n, title, desc }) => (
               <div key={n} className="flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold mr-4">{n}</div>
+                <div className="flex-shrink-0 w-8 h-8 bg-accent-600 text-white rounded-full flex items-center justify-center font-bold mr-4">{n}</div>
                 <div>
                   <h4 className="font-semibold mb-1 text-gray-900 dark:text-white">{title}</h4>
                   <p className="text-gray-600 dark:text-gray-400">{desc}</p>
@@ -81,9 +81,9 @@ export default function HomePage({ signOut, userEmail }: Props) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-600 dark:text-gray-400">
           <p>Built with ❤️ using the AI Development SOP</p>
           <p className="mt-2 text-sm">
-            <a href="https://github.com/jfowler-cloud" className="text-blue-600 dark:text-blue-400 hover:underline">GitHub</a>
+            <a href="https://github.com/jfowler-cloud" className="text-accent-600 dark:text-accent-400 hover:underline">GitHub</a>
             {" · "}
-            <a href="https://www.linkedin.com/in/james-fowler-aws-cloud-architect-dev-ops-professional/" className="text-blue-600 dark:text-blue-400 hover:underline">LinkedIn</a>
+            <a href="https://www.linkedin.com/in/james-fowler-aws-cloud-architect-dev-ops-professional/" className="text-accent-600 dark:text-accent-400 hover:underline">LinkedIn</a>
           </p>
         </div>
       </footer>

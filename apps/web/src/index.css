@@ -1,3 +1,46 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Amplify Authenticator dark mode overrides */
+:root[data-amplify-theme] {
+  --amplify-colors-brand-primary-10: #fff1f1;
+  --amplify-colors-brand-primary-20: #ffc5c5;
+  --amplify-colors-brand-primary-40: #ff5c5c;
+  --amplify-colors-brand-primary-60: #e8001c;
+  --amplify-colors-brand-primary-80: #cc0018;
+  --amplify-colors-brand-primary-90: #a80014;
+  --amplify-colors-brand-primary-100: #6b000c;
+}
+
+.dark [data-amplify-authenticator] {
+  --amplify-colors-background-primary: #111827;
+  --amplify-colors-background-secondary: #1f2937;
+  --amplify-colors-font-primary: #f9fafb;
+  --amplify-colors-font-secondary: #d1d5db;
+  --amplify-colors-font-tertiary: #9ca3af;
+  --amplify-colors-border-primary: #374151;
+  --amplify-colors-border-secondary: #4b5563;
+}
+
+.dark [data-amplify-authenticator] [data-amplify-container] {
+  background-color: #111827;
+}
+
+.dark [data-amplify-authenticator] button[data-amplify-primary] {
+  background-color: #e8001c;
+}
+
+.dark [data-amplify-authenticator] button[data-amplify-primary]:hover {
+  background-color: #cc0018;
+}
+
+.dark [data-amplify-authenticator] input {
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+.dark [data-amplify-authenticator] label {
+  color: #d1d5db;
+}

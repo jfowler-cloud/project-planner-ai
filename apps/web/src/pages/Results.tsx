@@ -73,7 +73,7 @@ export default function ResultsPage() {
   if (!plan) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-600"></div>
       </div>
     );
   }
@@ -90,7 +90,7 @@ export default function ResultsPage() {
       <nav className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">Project Planner AI</h1>
+            <h1 className="text-xl font-bold text-accent-600 dark:text-accent-400">Project Planner AI</h1>
             <div className="flex items-center gap-3">
               <ThemeToggle />
               <button onClick={() => navigate("/questionnaire")} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
@@ -107,7 +107,7 @@ export default function ResultsPage() {
           <p className="text-gray-600 dark:text-gray-400 mb-4">{basics?.description ?? plan.recommended.description ?? ""}</p>
           {basics && (
             <div className="flex gap-4 text-sm">
-              {basics.timeline && <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-full">{basics.timeline}</span>}
+              {basics.timeline && <span className="px-3 py-1 bg-accent-100 dark:bg-accent-900/40 text-accent-800 dark:text-accent-300 rounded-full">{basics.timeline}</span>}
               {basics.budget && <span className="px-3 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-full">{basics.budget}</span>}
             </div>
           )}
@@ -122,7 +122,7 @@ export default function ResultsPage() {
                   onClick={() => setActiveTab(tab)}
                   className={`px-6 py-3 font-medium capitalize transition-colors ${
                     activeTab === tab
-                      ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                      ? "border-b-2 border-accent-600 text-accent-600 dark:text-accent-400"
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                   }`}
                 >
@@ -137,7 +137,7 @@ export default function ResultsPage() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">Recommended Architecture</h3>
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600 rounded">
+                  <div className="p-4 bg-accent-50 dark:bg-accent-900/20 border-l-4 border-accent-600 rounded">
                     <div className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">{plan.recommended.name}</div>
                     {plan.recommended.best_for && <p className="text-gray-700 dark:text-gray-300">{plan.recommended.best_for}</p>}
                   </div>
@@ -178,17 +178,17 @@ export default function ResultsPage() {
                     onClick={() => setSelectedOptionIndex(idx)}
                     className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       selectedOptionIndex === idx
-                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 shadow-md"
+                        ? "border-accent-600 bg-accent-50 dark:bg-accent-900/20 shadow-md"
                         : "border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500"
                     }`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-3">
-                        <input type="radio" checked={selectedOptionIndex === idx} onChange={() => setSelectedOptionIndex(idx)} className="w-5 h-5 text-blue-600" />
+                        <input type="radio" checked={selectedOptionIndex === idx} onChange={() => setSelectedOptionIndex(idx)} className="w-5 h-5 text-accent-600" />
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{option.name}</h4>
                       </div>
                       <div className="flex gap-2">
-                        {selectedOptionIndex === idx && <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded">Selected</span>}
+                        {selectedOptionIndex === idx && <span className="px-2 py-1 bg-accent-600 text-white text-xs rounded">Selected</span>}
                         {idx === 0 && <span className="px-2 py-1 bg-green-600 text-white text-xs rounded">Recommended</span>}
                       </div>
                     </div>
@@ -244,13 +244,13 @@ export default function ResultsPage() {
                           )}
                           {f.recommendations.length > 0 && (
                             <ul className="text-sm space-y-1">
-                              {f.recommendations.map((rec, i) => <li key={i} className="text-blue-600 dark:text-blue-400">→ {rec}</li>)}
+                              {f.recommendations.map((rec, i) => <li key={i} className="text-accent-600 dark:text-accent-400">→ {rec}</li>)}
                             </ul>
                           )}
                         </div>
                       ))}
                     </div>
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="p-4 bg-accent-50 dark:bg-accent-900/20 rounded-lg">
                       <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {findings.length} categories reviewed · {allFindings.length} findings · {allRecommendations.length} recommendations
                       </div>
