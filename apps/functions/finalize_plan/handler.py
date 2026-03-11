@@ -27,12 +27,25 @@ def handler(event: dict, context=None) -> dict:
     plan_id = event.get("plan_id") or str(uuid.uuid4())
     created_at = int(time.time())
 
+    # Aggregate review findings from Map state results
+    review_findings = event.get("review_findings", [])
+    review_results = event.get("reviewResults", [])
+    recommended = event.get("recommended", {})
+
+    if review_results:
+        for result in review_results:
+            findings = result.get("review_findings", [])
+            review_findings.extend(findings)
+            # Use latest recommended if a review updated it
+            if result.get("recommended"):
+                recommended = result["recommended"]
+
     plan_item = {
         "planId": plan_id,
         "questionnaire": event.get("questionnaire", {}),
-        "recommended": event.get("recommended", {}),
+        "recommended": recommended,
         "alternatives": event.get("alternatives", []),
-        "reviewFindings": event.get("review_findings", []),
+        "reviewFindings": review_findings,
         "createdAt": created_at,
         "status": "COMPLETED",
     }
@@ -43,4 +56,12 @@ def handler(event: dict, context=None) -> dict:
     except Exception as e:
         logger.warning("DynamoDB write failed (non-fatal): %s", e)
 
-    return {**event, "plan_id": plan_id, "created_at": created_at, "status": "COMPLETED"}
+    return {
+        "plan_id": plan_id,
+        "questionnaire": event.get("questionnaire", {}),
+        "recommended": recommended,
+        "alternatives": event.get("alternatives", []),
+        "review_findings": review_findings,
+        "created_at": created_at,
+        "status": "COMPLETED",
+    }

@@ -50,9 +50,15 @@ Respond with JSON:
     "mermaid_diagram": "graph TD\\n  A[Frontend] --> B[API]\\n  B --> C[DB]"
   }},
   "alternatives": [
+    {{"name": "...", "stack": {{}}, "pros": [], "cons": [], "monthly_cost_estimate": "...", "complexity": "...", "best_for": "...", "mermaid_diagram": "..."}},
     {{"name": "...", "stack": {{}}, "pros": [], "cons": [], "monthly_cost_estimate": "...", "complexity": "...", "best_for": "...", "mermaid_diagram": "..."}}
   ]
-}}"""
+}}
+
+IMPORTANT: You MUST provide exactly 2-3 alternatives in addition to the recommended option.
+Each alternative should represent a meaningfully different architectural approach
+(e.g., serverless vs containers vs monolith, or different database choices).
+Do NOT return an empty alternatives array."""
 
 
 @tracer.capture_lambda_handler
@@ -92,7 +98,26 @@ def handler(event: dict, context=None) -> dict:
                 "best_for": "General purpose web application",
                 "mermaid_diagram": "graph TD\n  A[Cloudscape SPA] --> B[Lambda + Powertools]\n  B --> C[DynamoDB]\n  D[Cognito] --> A\n  E[CloudFront] --> A",
             },
-            "alternatives": [],
+            "alternatives": [
+                {
+                    "name": "Containerized + ECS Fargate",
+                    "stack": {"frontend": "React 19 + Vite + Cloudscape", "backend": "ECS Fargate + FastAPI", "database": "DynamoDB", "infra": "CDK v2 (TypeScript)", "auth": "Cognito", "hosting": "ALB + CloudFront"},
+                    "pros": ["No cold starts", "Full control over runtime", "Easy local development"],
+                    "cons": ["Higher base cost", "More operational overhead"],
+                    "monthly_cost_estimate": "$30-80/month",
+                    "complexity": "medium",
+                    "best_for": "Applications needing consistent low-latency responses",
+                },
+                {
+                    "name": "Minimal Lambda + S3",
+                    "stack": {"frontend": "React 19 + Vite + Cloudscape", "backend": "Lambda (minimal)", "database": "S3 + DynamoDB", "infra": "CDK v2 (TypeScript)", "auth": "Cognito", "hosting": "S3 + CloudFront"},
+                    "pros": ["Lowest cost", "Simplest architecture", "Fast to deploy"],
+                    "cons": ["Limited compute power", "Not suited for heavy workloads"],
+                    "monthly_cost_estimate": "$1-5/month",
+                    "complexity": "low",
+                    "best_for": "Simple CRUD applications or prototypes",
+                },
+            ],
         }
 
     return {
