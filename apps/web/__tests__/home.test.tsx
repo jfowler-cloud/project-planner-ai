@@ -55,6 +55,12 @@ describe("HomePage", () => {
     expect(signOut).toHaveBeenCalled();
   });
 
+  it("renders 'Sign out' without email when signOut provided but no userEmail", () => {
+    const signOut = vi.fn();
+    renderPage({ signOut });
+    expect(screen.getByText("Sign out")).toBeInTheDocument();
+  });
+
   it("does not render sign out button when signOut not provided", () => {
     renderPage();
     expect(screen.queryByText(/Sign out/)).not.toBeInTheDocument();

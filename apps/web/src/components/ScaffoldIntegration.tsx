@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SCAFFOLD_URL, SCAFFOLD_BACKEND_URL } from "@/lib/config";
+import { SCAFFOLD_URL } from "@/lib/config";
 
 interface ArchitectureOption {
   name: string;
@@ -32,59 +32,6 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
     const allOptions = [projectPlan.recommended, ...projectPlan.alternatives];
     const idx = projectPlan.selectedOptionIndex ?? 0;
     return allOptions[idx] ?? projectPlan.recommended;
-  };
-
-  const handleExportToScaffold = async () => {
-    if (!projectPlan) return;
-
-    const selected = getSelectedOption()!;
-    const basics = projectPlan.questionnaire?.basics;
-    const technical = projectPlan.questionnaire?.technical;
-
-    const planData = {
-      plan_id: projectPlan.plan_id,
-      project_name: basics?.name ?? "Untitled",
-      description: basics?.description ?? "",
-      architecture: selected.name,
-      tech_stack: selected.stack ?? {},
-      requirements: {
-        users: technical?.user_count,
-        uptime: technical?.uptime,
-        data_size: technical?.data_size,
-      },
-      portfolio_standards: {
-        structure: "mono-repo: apps/{agents,functions,infra,web}",
-        frontend: "React 19 + Vite + Cloudscape, dark mode, red accent #e8001c",
-        backend: "AWS Lambda + aws-lambda-powertools, Python 3.12+, uv",
-        database: "DynamoDB (on-demand, PITR, RemovalPolicy.RETAIN)",
-        auth: "Cognito User Pool + Identity Pool (no API Gateway)",
-        infra: "CDK v2 TypeScript, S3 + CloudFront hosting",
-        ai: "Strands SDK + Bedrock (Claude), agents in CodeBuild",
-        testing: "Vitest 95%+, pytest+moto 95%+, Playwright E2E, Jest CDK",
-        ci: "GitHub Actions: frontend, backend, agents, infra, security",
-        required_files: ["config.json", "CLAUDE.md", "dev.sh", "scripts/setup-env.sh", "CHANGELOG.md", "RUNBOOK.md"],
-      },
-      full_plan: projectPlan,
-    };
-
-    try {
-      const response = await fetch(`${SCAFFOLD_BACKEND_URL}/api/import/plan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(planData),
-      });
-      if (!response.ok) throw new Error("Failed to send plan to Scaffold AI");
-      const result = await response.json();
-      window.open(`${SCAFFOLD_URL}?from=planner&session=${result.session_id}`, "_blank");
-      alert("Plan sent to Scaffold AI successfully!");
-    } catch (error) {
-      console.error("Error sending plan to Scaffold AI:", error);
-      const stackStr = selected.stack ? Object.entries(selected.stack).map(([k, v]) => `${k}: ${v}`).join(", ") : "N/A";
-      const prompt = `I have a project plan from Project Planner AI:\n\nProject: ${basics?.name ?? "Untitled"}\nDescription: ${basics?.description ?? ""}\nArchitecture: ${selected.name}\nTech Stack: ${stackStr}\n\nPlease help me build this architecture following these portfolio standards:\n- Mono-repo: apps/{agents,functions,infra,web}\n- Frontend: React 19 + Vite + Cloudscape (dark mode, red accent #e8001c)\n- Backend: AWS Lambda + Powertools, Python 3.12+, uv\n- Infra: CDK v2 TypeScript, DynamoDB, Cognito, S3+CloudFront\n- Testing: Vitest 95%+, pytest+moto 95%+, Playwright E2E\n- CI: GitHub Actions 5-job pipeline`;
-      window.open(`${SCAFFOLD_URL}?from=planner&prompt=${encodeURIComponent(prompt)}`, "_blank");
-      navigator.clipboard.writeText(prompt).catch(() => {});
-      alert("Using fallback method. Plan data copied to clipboard!");
-    }
   };
 
   const selected = getSelectedOption();

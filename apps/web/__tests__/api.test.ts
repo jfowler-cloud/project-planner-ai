@@ -74,6 +74,14 @@ describe('pollExecution', () => {
     expect(result.status).toBe('RUNNING');
   });
 
+  it('handles payload without body string wrapper', async () => {
+    mockSend.mockResolvedValueOnce({
+      Payload: new TextEncoder().encode(JSON.stringify({ status: 'RUNNING' })),
+    });
+    const result = await pollExecution('arn:exec');
+    expect(result.status).toBe('RUNNING');
+  });
+
   it('returns error on FAILED', async () => {
     mockSend.mockResolvedValueOnce({
       Payload: new TextEncoder().encode(JSON.stringify({

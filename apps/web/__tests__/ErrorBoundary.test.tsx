@@ -32,6 +32,15 @@ describe("ErrorBoundary", () => {
     expect(screen.getByText("Custom fallback")).toBeInTheDocument();
   });
 
+  it("shows default message when error has empty message", () => {
+    function ThrowEmpty() {
+      throw new Error("");
+      return null;
+    }
+    render(<ErrorBoundary><ThrowEmpty /></ErrorBoundary>);
+    expect(screen.getByText("An unexpected error occurred.")).toBeInTheDocument();
+  });
+
   it("resets error state when Try again is clicked", () => {
     render(<ErrorBoundary><ThrowingComponent shouldThrow={true} /></ErrorBoundary>);
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();

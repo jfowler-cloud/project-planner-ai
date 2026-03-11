@@ -124,6 +124,19 @@ describe('ScaffoldIntegration', () => {
     expect(screen.queryByText(/technologies/)).not.toBeInTheDocument();
   });
 
+  it('copies description with N/A stack for plan without stack', async () => {
+    const noStackPlan = {
+      plan_id: 'plan-3',
+      questionnaire: { basics: { name: 'No Stack', description: 'test' } },
+      recommended: { name: 'Simple', pros: [], cons: [] },
+      alternatives: [],
+    };
+    render(<ScaffoldIntegration projectPlan={noStackPlan} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    fireEvent.click(screen.getByText('📋 Copy Description'));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('N/A')));
+  });
+
   it('falls back to recommended when selectedOptionIndex is out of bounds', () => {
     const badIndexPlan = {
       ...mockPlan,

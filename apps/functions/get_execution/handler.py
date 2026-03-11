@@ -5,7 +5,6 @@ import sys
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer, Metrics
-from aws_lambda_powertools.metrics import MetricUnit
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
 from config import app_config

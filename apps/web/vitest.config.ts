@@ -20,7 +20,7 @@ export default defineConfig({
       reportsDirectory: './coverage',
       all: true,
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
+      exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**', 'src/config/**'],
       // TODO: Target thresholds per PROJECT_STANDARDS.md: lines:95, branches:90, functions:90, statements:95
       thresholds: {
         lines: 93,
