@@ -262,10 +262,82 @@ Project Planner AI and [Scaffold AI](https://github.com/jfowler-cloud/scaffold-a
 
 ---
 
+## Code Review (Mar 2026)
+
+### Frontend → Backend Disconnect
+
+The **Planning** and **Results** pages still call a REST API (`${API_URL}/api/v1/plan/stream`, `/api/v1/plan/:id`, `/api/v1/rate-limit/stats`, `/api/v1/generate-repo`) that no longer exists — the FastAPI backend was removed in v2.1.0 and replaced with Lambda + Step Functions. These pages are non-functional without either:
+
+1. **Wiring the frontend to the deployed Lambda/SFN backend** — call `get_execution` Lambda via Cognito SDK, start SFN execution directly from the frontend (the IAM role already grants `startExecution` + `getExecution`)
+2. **Re-adding a lightweight API layer** — but that contradicts the no-API-Gateway architecture
+
+**Impact**: The Questionnaire → Planning → Results flow is broken in production. Only the Home page and Questionnaire form (steps 1-3) work. The Demo button fills the form but clicking "Generate Plan" navigates to `/planning` which immediately fails to connect.
+
+**Recommended fix**: Refactor `Planning.tsx` to:
+- Start a Step Functions execution via `sfn.startExecution()` (AWS SDK, Cognito credentials)
+- Poll via `get_execution` Lambda (already deployed, already granted to UserRole)
+- Remove all `fetch(API_URL/...)` calls
+
+### Zustand Store Unused
+
+`store.ts` defines a well-structured Zustand store (`useWizardStore`) with typed state, actions, and progress tracking — but **no page imports or uses it**. Pages use local `useState` + `sessionStorage` instead. Either:
+- Migrate pages to use the store (cleaner, avoids sessionStorage fragility)
+- Remove the store to reduce dead code
+
+### Duplicate `PORTFOLIO_STANDARDS` Constant
+
+The same multi-line portfolio standards string is duplicated in `generate_plan/handler.py` and `review_step/handler.py`. Should be extracted to `shared/constants.py` and imported by both handlers.
+
+### `any` Types in Frontend
+
+`Planning.tsx` and `Results.tsx` use `any` extensively for plan data (`options: any[]`, `plan.basics: any`, etc.). The `packages/shared-types/` package already defines proper interfaces (`ProjectPlan`, `ArchitectureOption`, `CostBreakdown`), but they're not imported. This defeats TypeScript's safety benefits.
+
+### Missing Error Boundaries on Pages
+
+Only `App.tsx` wraps routes in `ErrorBoundary`. If `Planning.tsx` crashes mid-stream (e.g., malformed SSE), the entire app shows the error fallback. Page-level error boundaries would give better UX (e.g., "Planning failed, try again" vs generic error).
+
+### `config.ts` Still References FastAPI
+
+```typescript
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+```
+
+This should be removed or replaced with AWS SDK config (region, identity pool ID) since the backend is now Lambda/SFN invoked via Cognito credentials, not REST.
+
+### Review Step Race Condition
+
+The Map state runs 10 review iterations with `maxConcurrency: 3`. Each review step receives `review_findings` from the initial state and appends to it locally — but **Map iterations don't share state**. Each parallel iteration starts with the same empty `review_findings: []` and returns its own single-item array. The final `reviewResults` is an array of 10 independent results, not a progressively refined list. This is fine architecturally (each review is independent), but the `review_step` prompt says "Previous findings: {previous_findings}" which will always be empty for the first batch of 3. Consider documenting this as intentional or restructuring to sequential reviews if cross-category context matters.
+
+### CDK Snapshot Environment Sensitivity
+
+Fixed in this session — asset hashes now stripped via `stripAssetHashes()` helper so snapshots are stable across local dev and CodeBuild. The root cause was `Code.fromAsset()` producing different content hashes based on filesystem state.
+
+### Frontend Coverage Below Target
+
+Current: 93% lines (vitest.config.ts thresholds). Portfolio standard: 95%. The gap is primarily in `Planning.tsx` and `Results.tsx` which have complex SSE streaming and tab logic. Improving coverage here is blocked by the REST API dependency — the tests mock `fetch()` against the old API contract.
+
+### Strengths
+
+- **Clean mono-repo structure** with clear separation (functions, agents, infra, web)
+- **Portfolio standards enforcement** baked directly into AI prompts — every generated plan will conform
+- **Observability from day one** — Powertools Logger/Tracer/Metrics on every handler, CloudWatch alarms, X-Ray
+- **Graceful degradation** — `generate_plan` returns a sensible fallback if Bedrock fails
+- **Security posture** — Cognito, least-privilege IAM, encrypted DynamoDB, PITR, RETAIN policies
+- **Scaffold AI integration** well-designed with API-first handoff + URL fallback
+- **CDK test suite** covers all 3 stacks with 20 assertions + 3 snapshot tests
+
+---
+
 ## Known Limitations
+
+### Frontend-Backend Gap (Critical)
+The frontend still calls REST API endpoints (`/api/v1/plan/stream`, etc.) from the removed FastAPI backend. The Lambda + SFN backend is deployed and functional but the frontend hasn't been wired to invoke it via AWS SDK + Cognito credentials. See Code Review section above.
 
 ### Session Storage
 The frontend uses `sessionStorage` to pass data between pages. Refreshing loses state, and results aren't shareable via URL. Server-side plan persistence (DynamoDB) is planned.
+
+### Authentication
+Cognito User Pool + Identity Pool are deployed with groups (users, admins) and IAM roles configured. The frontend has no login screen — it needs Amplify Authenticator integration (same pattern as idea-fairy and PSP).
 
 ### Planner → Scaffold Handoff
 The primary integration path sends plan data via REST API with session IDs. The fallback path uses URL query parameters, which loses structured metadata.
@@ -274,17 +346,22 @@ The primary integration path sends plan data via REST API with session IDs. The 
 
 ## Roadmap
 
-### Phase 1: Refinement Chat
+### Phase 1: Wire Frontend to Lambda/SFN Backend (Priority)
+- [ ] Replace `fetch(API_URL/...)` with AWS SDK calls via Cognito credentials
+- [ ] Start SFN execution from frontend, poll via `get_execution` Lambda
+- [ ] Add Amplify Authenticator (Cognito login)
+- [ ] Migrate pages to use Zustand store instead of sessionStorage
+- [ ] Replace `any` types with `shared-types` interfaces
+
+### Phase 2: Refinement Chat + Persistence
 - [ ] Refinement chat UI (chatbot between questionnaire and planning)
-- [ ] Pass refined requirements to planning phase
-
-### Phase 2: Persistence & Auth
 - [ ] DynamoDB persistence (shareable plan URLs, conversation history)
-- [ ] Wire Cognito auth to frontend
 
-### Phase 3: Export & Integration
+### Phase 3: Export & Polish
 - [ ] PDF/Markdown export
 - [ ] PSP config.json auto-generation in plan output
+- [ ] Extract duplicate `PORTFOLIO_STANDARDS` to shared module
+- [ ] Frontend coverage to 95%+
 
 ### Phase 4: Advanced
 - [ ] Team collaboration
