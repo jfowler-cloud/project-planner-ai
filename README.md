@@ -36,13 +36,13 @@ Describe your project in plain language — Project Planner AI refines your idea
 ## How It Works
 
 ```
-Questionnaire → Step Functions → Parallel Reviews (x11) → Results → Scaffold AI
+Questionnaire → Step Functions → Parallel Reviews (x10) → Results → Scaffold AI
    (3 steps)    (Lambda + SFN)    (SFN Map state)         (4 tabs)   (one click)
 ```
 
 1. **Answer simple questions** — project basics, technical requirements, preferences (no jargon required)
 2. **AI generates architecture options** — 3-5 approaches with security, observability, and testing built in from the start
-3. **Parallel critical review** — 11 review categories (security, cost, scalability, reliability, performance, maintainability, developer experience, compliance, observability, disaster recovery, portfolio standards) run concurrently via Step Functions Map state
+3. **Parallel critical review** — 10 review categories (security, cost optimization, scalability, reliability, performance, maintainability, developer experience, compliance, observability, disaster recovery) run concurrently via Step Functions Map state
 4. **Review results** — 4-tab view: overview, architecture, reviews, security
 5. **Hand off to Scaffold AI** — one-click transfer for code generation and infrastructure-as-code
 
@@ -88,7 +88,7 @@ All generated plans follow the standards defined in [PROJECT_STANDARDS.md](https
 | Practice | How It's Applied |
 |----------|-----------------|
 | **Mono-repo structure** | `apps/web`, `apps/functions`, `apps/agents`, `apps/infra` |
-| **Frontend tests** | Vitest + React Testing Library, 95% line coverage threshold |
+| **Frontend tests** | Vitest + React Testing Library, 93% line coverage threshold |
 | **Frontend E2E** | Playwright with axe-core accessibility checks |
 | **Backend tests** | pytest + moto, 95% line coverage threshold |
 | **CDK tests** | Snapshot tests + assertion tests for all stacks |
@@ -121,7 +121,7 @@ All generated plans follow the standards defined in [PROJECT_STANDARDS.md](https
 - **Secure-by-default output** — least privilege IAM, encryption, observability, testing baked into every plan
 - Portfolio architecture standards enforced in AI prompts
 - Real-time plan status polling via Step Functions execution ARN
-- Configurable review passes (1-11 categories)
+- Configurable review passes (1-10 categories)
 - Selectable architecture options during planning
 - AWS Bedrock integration (Claude via Strands SDK)
 - 3 deployment tiers (testing / optimized / premium)
@@ -322,7 +322,7 @@ All critical findings from the first review have been resolved:
 The frontend uses `sessionStorage` to pass data between pages. Refreshing loses state, and results aren't shareable via URL. Server-side plan persistence (DynamoDB) is planned.
 
 ### Planner → Scaffold Handoff
-The primary integration path sends plan data via REST API with session IDs. The fallback path uses URL query parameters, which loses structured metadata.
+The primary integration path writes plan data to the `project-planner-handoff` DynamoDB table with session IDs. The fallback path copies to clipboard for manual paste.
 
 ---
 
@@ -346,26 +346,13 @@ Project Planner AI (Part 1) generates architecture plans; [Scaffold AI](https://
 
 #### P1 — Important
 
-1. **Create shared types package**
-   - `INTEGRATION.md` references `@project-planner/shared-types` but this package doesn't exist
-   - Both projects define `ProjectPlan`, `ArchitectureOption`, review types independently
-   - Create a `packages/shared-types/` in either repo (or a standalone npm package)
-   - *Files:* New `packages/shared-types/`, both projects' `tsconfig.json`
+1. **Wire up shared types package**
+   - `packages/shared-types/` exists with complete TypeScript interfaces but is not imported by the frontend
+   - Both projects define `ProjectPlan`, `ArchitectureOption`, review types independently instead
+   - Wire up tsconfig path alias to import from the existing `@project-planner/shared-types` package
+   - *Files:* `apps/web/tsconfig.json`, `apps/web/package.json`
 
 2. **Align security scoring**
-   - Planner uses risk levels: `low | medium | high | critical`
-   - Scaffold uses numeric scores: `0-100` (security gate passes at ≥ 70)
-   - Define a mapping so Scaffold can skip redundant security review for pre-vetted plans
-   - *Files:* `apps/agents/shared/constants.py`, `ScaffoldIntegration.tsx`
-
-6. **Create shared types package**
-   - `INTEGRATION.md` references `@project-planner/shared-types` but this package doesn't exist
-   - Both projects define `ProjectPlan`, `ArchitectureOption`, review types independently
-   - Create a `packages/shared-types/` in either repo (or a standalone npm package) with:
-     - `ProjectPlan`, `ArchitectureOption`, `ReviewFinding`, `ScaffoldHandoffRequest/Response`
-   - *Files:* New `packages/shared-types/`, both projects' `tsconfig.json`
-
-7. **Align security scoring**
    - Planner uses risk levels: `low | medium | high | critical`
    - Scaffold uses numeric scores: `0-100` (security gate passes at ≥ 70)
    - Define a mapping: `critical=0-25, high=26-50, medium=51-75, low=76-100`
@@ -474,7 +461,7 @@ Phase 3 (Polish):             #8 Shared standards, #9 Tier sync, #10 Bidirection
 > **Looking for the LangChain version?** The previous LangChain-based pipeline is preserved on the [`legacy/langchain`](https://github.com/jfowler-cloud/project-planner-ai/tree/legacy/langchain) branch.
 
 - Replaced LangChain/in-process pipeline with AWS Step Functions + Strands agent core
-- 11 review iterations now run as a Step Functions Map state (maxConcurrency=3)
+- 10 review iterations now run as a Step Functions Map state (maxConcurrency=3)
 - Added `apps/functions/` Lambda handlers: `generate_plan`, `review_step`, `finalize_plan`, `get_execution`
 - Added `apps/agents/shared/` config + db helpers
 - Added `apps/infra/` CDK stack with Step Functions state machine + DynamoDB PlansTable
