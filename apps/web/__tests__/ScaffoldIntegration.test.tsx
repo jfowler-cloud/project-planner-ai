@@ -4,9 +4,13 @@ import ScaffoldIntegration from '../src/components/ScaffoldIntegration';
 
 vi.mock('../src/lib/config', () => ({
   SCAFFOLD_URL: 'http://scaffold.test',
-  SCAFFOLD_BACKEND_URL: 'http://scaffold-api.test',
-  scaffold: { url: 'http://scaffold.test', backendUrl: 'http://scaffold-api.test' },
-  app: { plansTable: 'test-table', workflowArn: '' },
+  scaffold: { url: 'http://scaffold.test' },
+  app: { plansTable: 'test-table', handoffTable: 'test-handoff-table', workflowArn: '' },
+}));
+
+const mockExportToScaffold = vi.fn();
+vi.mock('../src/lib/api', () => ({
+  exportToScaffold: (...args: unknown[]) => mockExportToScaffold(...args),
 }));
 
 const mockPlan = {
@@ -49,7 +53,7 @@ describe('ScaffoldIntegration', () => {
     fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
     const closeBtn = screen.getAllByRole('button').find(b => b.className.includes('text-zinc-400'));
     fireEvent.click(closeBtn!);
-    expect(screen.queryByText(/Coming Soon/)).toBeInTheDocument();
+    expect(screen.getByText(/Open in Scaffold AI/)).toBeInTheDocument();
   });
 
   it('closes panel when overlay clicked', () => {
@@ -73,17 +77,39 @@ describe('ScaffoldIntegration', () => {
     expect(screen.getByText(/Serverless/)).toBeInTheDocument();
   });
 
-  it('shows Coming Soon button', () => {
+  it('shows Open in Scaffold AI button', () => {
     render(<ScaffoldIntegration />);
     fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
-    expect(screen.getByText(/Coming Soon/)).toBeInTheDocument();
+    expect(screen.getByText(/Open in Scaffold AI/)).toBeInTheDocument();
   });
 
-  it('shows roadmap alert when Coming Soon button clicked', () => {
+  it('export button is disabled without a plan', () => {
+    render(<ScaffoldIntegration />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    const exportBtn = screen.getByText(/Open in Scaffold AI/);
+    expect(exportBtn).toBeDisabled();
+  });
+
+  it('exports plan to Scaffold AI on button click', async () => {
+    mockExportToScaffold.mockResolvedValueOnce({ sessionId: 'sess-1' });
     render(<ScaffoldIntegration projectPlan={mockPlan} />);
     fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
-    fireEvent.click(screen.getByText(/Coming Soon/));
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('roadmap'));
+    fireEvent.click(screen.getByText(/Open in Scaffold AI/));
+    await waitFor(() => expect(mockExportToScaffold).toHaveBeenCalledWith(expect.objectContaining({
+      plan_id: 'plan-1',
+      project_name: 'My App',
+      architecture: 'Serverless',
+    })));
+    expect(window.open).toHaveBeenCalledWith('http://scaffold.test?from=planner&session=sess-1', '_blank');
+  });
+
+  it('falls back to clipboard on export failure', async () => {
+    mockExportToScaffold.mockRejectedValueOnce(new Error('Network error'));
+    render(<ScaffoldIntegration projectPlan={mockPlan} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    fireEvent.click(screen.getByText(/Open in Scaffold AI/));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
+    expect(screen.getByText(/Export failed/)).toBeInTheDocument();
   });
 
   it('copies description to clipboard', async () => {
@@ -98,6 +124,35 @@ describe('ScaffoldIntegration', () => {
     render(<ScaffoldIntegration projectPlan={mockPlan} />);
     fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
     expect(screen.getByText('• 2 technologies')).toBeInTheDocument();
+  });
+
+  it('shows review findings count when present', () => {
+    const planWithFindings = {
+      ...mockPlan,
+      review_findings: [
+        { category: 'security', findings: ['issue'], recommendations: ['fix'], risk_level: 'high' },
+      ],
+    };
+    render(<ScaffoldIntegration projectPlan={planWithFindings} />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    expect(screen.getByText('• 1 review findings')).toBeInTheDocument();
+  });
+
+  it('includes review findings in export payload', async () => {
+    mockExportToScaffold.mockResolvedValueOnce({ sessionId: 'sess-2' });
+    const planWithFindings = {
+      ...mockPlan,
+      review_findings: [
+        { category: 'security', findings: ['issue'], recommendations: ['fix'], risk_level: 'high' },
+      ],
+    };
+    render(<ScaffoldIntegration projectPlan={planWithFindings} reviewSummaryMarkdown="# Summary" />);
+    fireEvent.click(screen.getByTitle('Scaffold AI Integration'));
+    fireEvent.click(screen.getByText(/Open in Scaffold AI/));
+    await waitFor(() => expect(mockExportToScaffold).toHaveBeenCalledWith(expect.objectContaining({
+      review_findings: planWithFindings.review_findings,
+      review_summary: '# Summary',
+    })));
   });
 
   it('handles plan without questionnaire', () => {

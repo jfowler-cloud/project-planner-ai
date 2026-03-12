@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { SCAFFOLD_URL } from "@/lib/config";
+import { exportToScaffold } from "@/lib/api";
 
 interface ArchitectureOption {
   name: string;
@@ -7,6 +8,13 @@ interface ArchitectureOption {
   stack?: Record<string, string>;
   pros: string[];
   cons: string[];
+}
+
+interface ReviewFinding {
+  category: string;
+  findings: string[];
+  recommendations: string[];
+  risk_level: string;
 }
 
 interface ProjectPlan {
@@ -18,14 +26,18 @@ interface ProjectPlan {
   recommended: ArchitectureOption;
   alternatives: ArchitectureOption[];
   selectedOptionIndex?: number;
+  review_findings?: ReviewFinding[];
 }
 
 interface ScaffoldIntegrationProps {
   projectPlan?: ProjectPlan;
+  reviewSummaryMarkdown?: string;
 }
 
-export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegrationProps) {
+export default function ScaffoldIntegration({ projectPlan, reviewSummaryMarkdown }: ScaffoldIntegrationProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const getSelectedOption = (): ArchitectureOption | undefined => {
     if (!projectPlan) return undefined;
@@ -36,7 +48,42 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
 
   const selected = getSelectedOption();
   const basics = projectPlan?.questionnaire?.basics;
+  const technical = projectPlan?.questionnaire?.technical;
   const stackCount = selected?.stack ? Object.keys(selected.stack).length : 0;
+  const findingsCount = projectPlan?.review_findings?.length ?? 0;
+
+  const handleExport = async () => {
+    if (!projectPlan || !selected) return;
+    setExporting(true);
+    setExportError(null);
+
+    const payload = {
+      plan_id: projectPlan.plan_id,
+      project_name: basics?.name ?? "Untitled",
+      description: basics?.description ?? "",
+      architecture: selected.name,
+      tech_stack: selected.stack ?? {},
+      requirements: {
+        users: technical?.user_count ?? "",
+        uptime: technical?.uptime ?? "",
+        data_size: technical?.data_size ?? "",
+      },
+      review_findings: projectPlan.review_findings ?? [],
+      review_summary: reviewSummaryMarkdown ?? "",
+      full_plan: projectPlan as unknown as Record<string, unknown>,
+    };
+
+    try {
+      const { sessionId } = await exportToScaffold(payload);
+      window.open(`${SCAFFOLD_URL}?from=planner&session=${sessionId}`, "_blank");
+    } catch {
+      setExportError("Export failed — plan copied to clipboard instead.");
+      const desc = `${basics?.description ?? ""}\n\nArchitecture: ${selected.name}\n\nTech Stack: ${selected.stack ? Object.entries(selected.stack).map(([k, v]) => `${k}: ${v}`).join(", ") : "N/A"}`;
+      await navigator.clipboard.writeText(desc);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <>
@@ -82,6 +129,7 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
                     <div>• {basics?.name ?? "Untitled"}</div>
                     <div>• {selected?.name ?? "No architecture selected"}</div>
                     {stackCount > 0 && <div>• {stackCount} technologies</div>}
+                    {findingsCount > 0 && <div>• {findingsCount} review findings</div>}
                   </div>
                   <button
                     onClick={() => {
@@ -99,11 +147,20 @@ export default function ScaffoldIntegration({ projectPlan }: ScaffoldIntegration
                 </div>
               )}
 
+              {exportError && (
+                <div className="bg-amber-900/40 border border-amber-700 rounded-lg p-3 mb-3 text-xs text-amber-200">
+                  {exportError}
+                </div>
+              )}
+
               <button
-                onClick={() => alert("Scaffold AI integration is on the roadmap. For now, use Copy Description or export your review summary from the Findings Summary section.")}
-                className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg opacity-60 cursor-default font-medium"
+                onClick={handleExport}
+                disabled={!projectPlan || exporting}
+                className={`w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium transition-all ${
+                  !projectPlan || exporting ? "opacity-50 cursor-not-allowed" : "hover:from-purple-500 hover:to-blue-500 cursor-pointer"
+                }`}
               >
-                Open in Scaffold AI — Coming Soon
+                {exporting ? "Exporting..." : "Open in Scaffold AI"}
               </button>
             </div>
 

@@ -126,7 +126,7 @@ All generated plans follow the standards defined in [PROJECT_STANDARDS.md](https
 - AWS Bedrock integration (Claude via Strands SDK)
 - 3 deployment tiers (testing / optimized / premium)
 - Results page with 4 tabs (overview, architecture, reviews, security)
-- **Scaffold AI integration** — Structured API handoff with session-based storage
+- **Scaffold AI integration** — DynamoDB-based handoff with session IDs and graceful fallback
 - **PSP integration** — Generated repos include config.json for Project Status Portal monitoring
 - GitHub repository generation from completed plans
 
@@ -134,9 +134,10 @@ All generated plans follow the standards defined in [PROJECT_STANDARDS.md](https
 
 Project Planner AI and [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) work together for a complete plan-to-code workflow:
 
-- **One-click handoff** — Purple sidebar button sends plan data via REST API
-- **Structured data transfer** — JSON-based with session IDs (no URL length limits)
-- **Standards included** — Plan data includes security/testing/observability requirements so Scaffold generates compliant repos
+- **One-click handoff** — Purple sidebar button writes plan data to `project-planner-handoff` DynamoDB table, opens Scaffold AI with `?from=planner&session={id}`
+- **DynamoDB-based transfer** — Cognito-authenticated writes from Planner, reads from Scaffold. 24h TTL auto-cleanup. No intermediate backend needed
+- **Graceful fallback** — If DynamoDB is unavailable, Scaffold falls back to clipboard-based import via URL `prompt` parameter
+- **Review findings included** — Full review findings array + markdown summary sent in handoff payload
 
 See [INTEGRATION.md](INTEGRATION.md) for complete integration documentation.
 
@@ -325,23 +326,123 @@ The primary integration path sends plan data via REST API with session IDs. The 
 
 ---
 
+## Scaffold AI Integration — Coupling Analysis
+
+Project Planner AI (Part 1) generates architecture plans; [Scaffold AI](https://github.com/jfowler-cloud/scaffold-ai) (Part 2) turns those plans into infrastructure-as-code and deployable repos.
+
+### Current State
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| `exportToScaffold()` API function | **DONE** | Writes to `project-planner-handoff` DynamoDB table via Cognito credentials |
+| ScaffoldIntegration sidebar button | **DONE** | Opens Scaffold AI with `?from=planner&session={id}` on success, clipboard fallback on failure |
+| Scaffold `usePlannerImport` hook | **DONE** | Reads from DynamoDB with graceful fallback to URL prompt parsing |
+| `PlannerNotification` + auto-submit | **DONE** | Auto-populates chat on import |
+| Review findings in handoff | **DONE** | Full `review_findings` array + `review_summary` markdown included |
+| Authentication | **DONE** | Cognito identity pool credentials — both Planner (write) and Scaffold (read) use IAM-authenticated DynamoDB access |
+| `PlannerRefineButton` (Scaffold → Planner) | Exists | Clipboard-based, no receive path in Planner |
+
+### Remaining Recommendations
+
+#### P1 — Important
+
+1. **Create shared types package**
+   - `INTEGRATION.md` references `@project-planner/shared-types` but this package doesn't exist
+   - Both projects define `ProjectPlan`, `ArchitectureOption`, review types independently
+   - Create a `packages/shared-types/` in either repo (or a standalone npm package)
+   - *Files:* New `packages/shared-types/`, both projects' `tsconfig.json`
+
+2. **Align security scoring**
+   - Planner uses risk levels: `low | medium | high | critical`
+   - Scaffold uses numeric scores: `0-100` (security gate passes at ≥ 70)
+   - Define a mapping so Scaffold can skip redundant security review for pre-vetted plans
+   - *Files:* `apps/agents/shared/constants.py`, `ScaffoldIntegration.tsx`
+
+6. **Create shared types package**
+   - `INTEGRATION.md` references `@project-planner/shared-types` but this package doesn't exist
+   - Both projects define `ProjectPlan`, `ArchitectureOption`, review types independently
+   - Create a `packages/shared-types/` in either repo (or a standalone npm package) with:
+     - `ProjectPlan`, `ArchitectureOption`, `ReviewFinding`, `ScaffoldHandoffRequest/Response`
+   - *Files:* New `packages/shared-types/`, both projects' `tsconfig.json`
+
+7. **Align security scoring**
+   - Planner uses risk levels: `low | medium | high | critical`
+   - Scaffold uses numeric scores: `0-100` (security gate passes at ≥ 70)
+   - Define a mapping: `critical=0-25, high=26-50, medium=51-75, low=76-100`
+   - Include numeric score in handoff so Scaffold can skip redundant security review for pre-vetted plans
+   - *Files:* `apps/agents/shared/constants.py` (add mapping), `ScaffoldIntegration.tsx` (compute score)
+
+#### P2 — Nice to have (developer experience)
+
+8. **Extract PORTFOLIO_STANDARDS to a shared package**
+   - Both projects bake portfolio standards into AI prompts independently
+   - If standards drift, Planner generates plans that Scaffold's security gate rejects
+   - Create a shared Python package or a JSON file both projects import at build time
+   - *Files:* `apps/agents/shared/constants.py`, Scaffold's equivalent
+
+9. **Synchronize deployment tiers**
+   - Both projects have `testing | optimized | premium` tiers with the same model map
+   - If Planner runs on `premium` (Opus) and Scaffold on `testing` (Haiku), quality mismatches occur
+   - Options: shared SSM parameter for tier, or include tier in handoff metadata so Scaffold matches
+   - *Files:* `apps/agents/shared/config.py`, Scaffold's `config.py`
+
+10. **Implement bidirectional refinement**
+    - Scaffold has `PlannerRefineButton` that copies to clipboard and opens Planner
+    - Planner has no receive path — add a `?from=scaffold&feedback=<encoded>` query param handler
+    - Parse feedback and pre-populate a refinement prompt in Questionnaire or Results page
+    - *Files:* `Results.tsx` or new `Refinement.tsx` page, `App.tsx` (add route)
+
+11. **Connect markdown export to Scaffold import**
+    - Results.tsx `buildSummaryMarkdown()` generates structured findings markdown
+    - Include as `review_markdown` field in handoff — Scaffold can display in PlannerNotification
+    - *Files:* `ScaffoldIntegration.tsx`, Scaffold's `usePlannerImport.ts`
+
+12. **Update INTEGRATION.md**
+    - References `NEXT_PUBLIC_*` env vars (leftover from Next.js) — should be `VITE_*`
+    - Claims `Project Planner Backend: http://localhost:8000` — backend was removed in v2.1.0
+    - Shared types package described but doesn't exist — update to reflect actual state
+    - *Files:* `INTEGRATION.md`
+
+13. **PSP config.json in handoff**
+    - Plans generated by Planner should include a `config.json` template for PSP monitoring
+    - Scaffold should include this in generated repos so new projects are automatically monitored
+    - *Files:* `apps/functions/generate_plan/handler.py` (add to output), Scaffold's code generation
+
+### Implementation Priority
+
+```
+Phase 1 (Enable handoff):     #1 Re-enable button, #2 Include findings, #3 Include markdown
+Phase 2 (Production-ready):   #4 DynamoDB sessions, #5 Auth, #6 Shared types, #7 Score alignment
+Phase 3 (Polish):             #8 Shared standards, #9 Tier sync, #10 Bidirectional, #11-13 DX
+```
+
+---
+
 ## Roadmap
 
-### Phase 1: Persistence + Polish
+### Phase 1: Scaffold Handoff + Persistence
+- [x] ~~Re-enable Scaffold AI export button with review findings + markdown summary~~
+- [x] ~~Replace in-memory sessions with DynamoDB (`project-planner-handoff` table, 24h TTL)~~
+- [x] ~~Cognito-authenticated DynamoDB access (Planner writes, Scaffold reads)~~
 - [ ] Migrate pages to use Zustand store instead of sessionStorage
-- [ ] DynamoDB persistence (shareable plan URLs)
+- [ ] DynamoDB persistence for shareable plan URLs
 
-### Phase 2: Refinement Chat + Persistence
-- [ ] Refinement chat UI (chatbot between questionnaire and planning)
-- [ ] DynamoDB persistence (shareable plan URLs, conversation history)
+### Phase 2: Shared Types + Polish
+- [ ] Create shared types package (`ProjectPlan`, `ReviewFinding`, `ScaffoldHandoffRequest`)
+- [ ] Align security scoring (risk levels ↔ numeric 0-100)
+- [ ] Refinement chat UI (conversational refinement between questionnaire and planning)
 
 ### Phase 3: Export & Polish
-- [ ] PDF/Markdown export
-- [ ] PSP config.json auto-generation in plan output
+- [x] ~~Markdown export of review findings (copy + download)~~
+- [ ] PDF export
+- [ ] PSP config.json auto-generation in plan output and Scaffold handoff
 - [x] ~~Extract duplicate `PORTFOLIO_STANDARDS` to shared module~~
 - [x] ~~Frontend coverage thresholds met~~
 
 ### Phase 4: Advanced
+- [ ] Bidirectional refinement (Scaffold → Planner feedback loop)
+- [ ] Shared PORTFOLIO_STANDARDS package across all portfolio projects
+- [ ] Synchronized deployment tiers via SSM parameter
 - [ ] Team collaboration
 - [ ] Multi-cloud support (Azure, GCP)
 - [ ] Compliance templates (HIPAA, SOC2)

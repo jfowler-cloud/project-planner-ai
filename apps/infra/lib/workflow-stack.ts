@@ -172,6 +172,7 @@ export class WorkflowStack extends cdk.Stack {
 
     fns.getExecutionFn.grantInvoke(userRole)
     stateMachine.grantStartExecution(userRole)
+    db.handoffTable.grantWriteData(userRole)
 
     new cognito.CfnIdentityPoolRoleAttachment(this, 'RoleAttachment', {
       identityPoolId: db.identityPool.ref,

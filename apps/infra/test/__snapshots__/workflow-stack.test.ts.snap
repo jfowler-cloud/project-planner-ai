@@ -11,6 +11,17 @@ exports[`ProjectPlanner Multi-Stack DatabaseStack matches snapshot 1`] = `
         ],
       },
     },
+    "ExportsOutputFnGetAttHandoffTable4F7B5F4CArnDA3DB2DE": {
+      "Export": {
+        "Name": "TestDB:ExportsOutputFnGetAttHandoffTable4F7B5F4CArnDA3DB2DE",
+      },
+      "Value": {
+        "Fn::GetAtt": [
+          "HandoffTable4F7B5F4C",
+          "Arn",
+        ],
+      },
+    },
     "ExportsOutputFnGetAttPlansTableD3E3A972ArnE313F4D2": {
       "Export": {
         "Name": "TestDB:ExportsOutputFnGetAttPlansTableD3E3A972ArnE313F4D2",
@@ -44,6 +55,11 @@ exports[`ProjectPlanner Multi-Stack DatabaseStack matches snapshot 1`] = `
       },
       "Value": {
         "Ref": "PlansTableD3E3A972",
+      },
+    },
+    "HandoffTableName": {
+      "Value": {
+        "Ref": "HandoffTable4F7B5F4C",
       },
     },
     "IdentityPoolId": {
@@ -140,6 +156,34 @@ exports[`ProjectPlanner Multi-Stack DatabaseStack matches snapshot 1`] = `
         },
       },
       "Type": "AWS::CloudFront::Distribution",
+    },
+    "HandoffTable4F7B5F4C": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "sessionId",
+            "AttributeType": "S",
+          },
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "KeySchema": [
+          {
+            "AttributeName": "sessionId",
+            "KeyType": "HASH",
+          },
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true,
+        },
+        "TableName": "project-planner-handoff",
+        "TimeToLiveSpecification": {
+          "AttributeName": "ttl",
+          "Enabled": true,
+        },
+      },
+      "Type": "AWS::DynamoDB::Table",
+      "UpdateReplacePolicy": "Delete",
     },
     "HostingBucket5DAC2127": {
       "DeletionPolicy": "Retain",
@@ -1544,6 +1588,19 @@ exports[`ProjectPlanner Multi-Stack WorkflowStack matches snapshot 1`] = `
               "Effect": "Allow",
               "Resource": {
                 "Ref": "PlannerWorkflowC609D970",
+              },
+            },
+            {
+              "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "TestDB:ExportsOutputFnGetAttHandoffTable4F7B5F4CArnDA3DB2DE",
               },
             },
           ],

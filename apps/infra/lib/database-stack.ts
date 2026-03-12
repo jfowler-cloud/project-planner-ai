@@ -18,6 +18,7 @@ export class DatabaseStack extends cdk.Stack {
   readonly userPoolClient: cognito.UserPoolClient
   readonly identityPool: cognito.CfnIdentityPool
   readonly plansTable: dynamodb.Table
+  readonly handoffTable: dynamodb.Table
   readonly hostingBucket: s3.Bucket
   readonly distribution: cloudfront.Distribution
   readonly alarmTopic: sns.Topic
@@ -60,6 +61,15 @@ export class DatabaseStack extends cdk.Stack {
       encryption: dynamodb.TableEncryption.AWS_MANAGED,
       pointInTimeRecovery: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
+    })
+
+    this.handoffTable = new dynamodb.Table(this, 'HandoffTable', {
+      tableName: 'project-planner-handoff',
+      partitionKey: { name: 'sessionId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      timeToLiveAttribute: 'ttl',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     })
 
     // ── S3 + CloudFront ─────────────────────────────────────────────────────
@@ -115,6 +125,7 @@ export class DatabaseStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: this.userPoolClient.userPoolClientId })
     new cdk.CfnOutput(this, 'IdentityPoolId', { value: this.identityPool.ref })
     new cdk.CfnOutput(this, 'PlansTableName', { value: this.plansTable.tableName })
+    new cdk.CfnOutput(this, 'HandoffTableName', { value: this.handoffTable.tableName })
     new cdk.CfnOutput(this, 'DistributionDomain', { value: this.distribution.distributionDomainName })
   }
 }

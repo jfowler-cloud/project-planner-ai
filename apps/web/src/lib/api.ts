@@ -1,8 +1,10 @@
 /** AWS SDK calls via Cognito identity pool credentials. */
 import { SFNClient, StartExecutionCommand, DescribeExecutionCommand } from '@aws-sdk/client-sfn'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { fetchAuthSession } from 'aws-amplify/auth'
-import { awsConfig, appConfig, scaffoldConfig } from '@/config/amplify'
+import { awsConfig, appConfig } from '@/config/amplify'
 
 async function getClients() {
   const session = await fetchAuthSession()
@@ -10,6 +12,7 @@ async function getClients() {
   return {
     sfn: new SFNClient(config),
     lambda: new LambdaClient(config),
+    ddb: DynamoDBDocumentClient.from(new DynamoDBClient(config)),
   }
 }
 
@@ -79,11 +82,19 @@ export async function describeExecution(executionArn: string) {
 }
 
 export async function exportToScaffold(planData: Record<string, unknown>): Promise<{ sessionId: string }> {
-  const resp = await fetch(`${scaffoldConfig.backendUrl}/api/import/plan`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(planData),
-  })
-  if (!resp.ok) throw new Error('Scaffold export failed')
-  return resp.json()
+  const { ddb } = await getClients()
+  const sessionId = crypto.randomUUID()
+  const ttl = Math.floor(Date.now() / 1000) + 86400 // 24h expiry
+
+  await ddb.send(new PutCommand({
+    TableName: appConfig.handoffTable,
+    Item: {
+      sessionId,
+      ...planData,
+      imported_at: new Date().toISOString(),
+      ttl,
+    },
+  }))
+
+  return { sessionId }
 }

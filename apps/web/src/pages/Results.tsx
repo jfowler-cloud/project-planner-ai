@@ -729,7 +729,7 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      <ScaffoldIntegration projectPlan={plan} />
+      <ScaffoldIntegration projectPlan={plan} reviewSummaryMarkdown={buildSummaryMarkdown()} />
     </div>
   );
 }

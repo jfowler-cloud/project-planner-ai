@@ -26,6 +26,7 @@ IDENTITY_POOL_ID=$(extract_output "ProjectPlanner-Database" "IdentityPoolId")
 PLANS_TABLE=$(extract_output "ProjectPlanner-Database" "PlansTableName")
 DISTRIBUTION_DOMAIN=$(extract_output "ProjectPlanner-Database" "DistributionDomain")
 WORKFLOW_ARN=$(extract_output "ProjectPlanner-Workflow" "WorkflowArn")
+HANDOFF_TABLE=$(extract_output "ProjectPlanner-Database" "HandoffTableName")
 
 ENV_FILE="apps/web/.env"
 cat > "$ENV_FILE" << EOF
@@ -35,6 +36,7 @@ VITE_USER_POOL_ID=${USER_POOL_ID}
 VITE_USER_POOL_CLIENT_ID=${USER_POOL_CLIENT_ID}
 VITE_IDENTITY_POOL_ID=${IDENTITY_POOL_ID}
 VITE_PLANS_TABLE=${PLANS_TABLE}
+VITE_HANDOFF_TABLE=${HANDOFF_TABLE}
 VITE_WORKFLOW_ARN=${WORKFLOW_ARN}
 VITE_DISTRIBUTION_DOMAIN=${DISTRIBUTION_DOMAIN}
 EOF
@@ -46,6 +48,7 @@ echo "  Region:           ${REGION}"
 echo "  User Pool:        ${USER_POOL_ID}"
 echo "  Identity Pool:    ${IDENTITY_POOL_ID}"
 echo "  Plans Table:      ${PLANS_TABLE}"
+echo "  Handoff Table:    ${HANDOFF_TABLE}"
 echo "  Workflow ARN:     ${WORKFLOW_ARN}"
 echo "  CloudFront:       ${DISTRIBUTION_DOMAIN}"
 echo ""

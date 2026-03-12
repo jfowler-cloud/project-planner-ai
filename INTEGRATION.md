@@ -93,29 +93,28 @@ Response:
 
 ## Shared Types
 
-Both projects use a shared types package (`@project-planner/shared-types` and `@scaffold-ai/shared-types`) to ensure type safety across the integration.
+> **Note:** A shared types package (`@project-planner/shared-types`) is planned but does not yet exist. Both projects currently define their own interfaces independently. See README.md "Scaffold AI Integration — Coupling Analysis" for the roadmap.
 
-Key types:
-- `ProjectPlan` - Complete project plan structure
-- `ArchitectureOption` - Individual architecture option
-- `SecurityReview` - Security review results (aligned between projects)
-- `ScaffoldHandoffRequest` - Data sent from Planner to Scaffold
-- `ScaffoldHandoffResponse` - Response from Scaffold
+Key types (defined independently in each project):
+- `ProjectPlan` — Complete project plan structure (Planner: `ScaffoldIntegration.tsx`, Scaffold: `usePlannerImport.ts`)
+- `ArchitectureOption` — Individual architecture option
+- `ReviewFinding` — Review results (Planner uses risk levels, Scaffold uses numeric 0-100 scores)
+- `PlanImportRequest` — Data sent from Planner to Scaffold (Scaffold: `main.py`)
 
 ## Environment Variables
 
 ### Project Planner AI
 
 ```env
-NEXT_PUBLIC_SCAFFOLD_URL=http://localhost:3001
-NEXT_PUBLIC_SCAFFOLD_BACKEND_URL=http://localhost:8001
+VITE_SCAFFOLD_URL=http://localhost:3001
+VITE_SCAFFOLD_BACKEND_URL=http://localhost:8001
 ```
 
 ### Scaffold AI
 
 ```env
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8001
-NEXT_PUBLIC_PLANNER_URL=http://localhost:3000
+VITE_BACKEND_URL=http://localhost:8001
+VITE_PLANNER_URL=http://localhost:3000
 ```
 
 ## Development Setup
@@ -130,10 +129,11 @@ cd project-planner-ai
 ```
 
 This starts:
-- Project Planner Backend: http://localhost:8000
 - Project Planner Frontend: http://localhost:3000
 - Scaffold AI Backend: http://localhost:8001
 - Scaffold AI Frontend: http://localhost:3001
+
+> **Note:** Project Planner AI has no local backend — it uses Lambda + Step Functions via Cognito identity pool credentials directly from the frontend.
 
 ### Testing the Integration
 
@@ -154,32 +154,22 @@ This ensures the integration works even if one backend is unavailable.
 
 ## Future Enhancements
 
-### Planned Features
+See README.md "Scaffold AI Integration — Coupling Analysis" for the full prioritized list. Key items:
 
-1. **Bidirectional Workflow**
-   - "Refine in Planner" button in Scaffold AI
-   - Send security feedback back to Planner
-   - Iterate on architecture based on code generation results
+### Phase 1 — Enable Handoff
+- Re-enable export button, include review findings + markdown summary in payload
+- Replace Scaffold in-memory storage with DynamoDB (TTL 24h)
 
-2. **Persistent Storage**
-   - Replace in-memory storage with Redis/DynamoDB
-   - Enable plan sharing via URLs
-   - Support plan history and versioning
+### Phase 2 — Production Ready
+- Create shared types package (`ProjectPlan`, `ReviewFinding`, `ScaffoldHandoffRequest`)
+- Add authentication to import endpoint (shared Cognito or API key)
+- Align security scoring: risk levels (low/medium/high/critical) ↔ numeric (0-100)
 
-3. **Unified Authentication**
-   - Shared AWS Cognito user pool
-   - Single sign-on between projects
-   - Team collaboration features
-
-4. **Cost Feedback Loop**
-   - Scaffold AI calls AWS Pricing API for real costs
-   - Send actual costs back to Planner
-   - Enable cost-driven re-planning
-
-5. **Security Alignment**
-   - Unified security scoring (0-100)
-   - Share security recommendations between projects
-   - Automated security fixes in Planner based on Scaffold findings
+### Phase 3 — Polish
+- Bidirectional refinement (Scaffold → Planner `?from=scaffold&feedback=`)
+- Shared PORTFOLIO_STANDARDS package across portfolio
+- Synchronized deployment tiers
+- Cost feedback loop (Scaffold → Planner with actual AWS pricing)
 
 ## Troubleshooting
 
