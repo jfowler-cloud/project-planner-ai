@@ -399,7 +399,7 @@ exports[`ProjectPlanner Multi-Stack DatabaseStack matches snapshot 1`] = `
           ],
         },
         "AdminCreateUserConfig": {
-          "AllowAdminCreateUserOnly": false,
+          "AllowAdminCreateUserOnly": true,
         },
         "AutoVerifiedAttributes": [
           "email",
