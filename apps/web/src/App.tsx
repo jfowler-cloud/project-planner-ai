@@ -15,7 +15,7 @@ Amplify.configure(amplifyConfig)
 export default function App() {
   return (
     <ThemeProvider>
-      <Authenticator>
+      <Authenticator hideSignUp>
         {({ signOut, user }) => (
           <ErrorBoundary>
             <Routes>
