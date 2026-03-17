@@ -262,45 +262,25 @@ Project Planner AI and [Scaffold AI](https://github.com/jfowler-cloud/scaffold-a
 
 ---
 
-## Code Review (Mar 2026)
+## Code Reviews (Mar 2026)
 
-### Review 1 — Fixes Completed
+Two full code reviews completed — all critical/high findings resolved:
 
-All critical findings from the first review have been resolved:
+- Rewrote frontend API layer from REST to AWS SDK (SFN + Lambda via Cognito credentials)
+- Extracted `PORTFOLIO_STANDARDS` to shared module (`apps/agents/shared/constants.py`)
+- Fixed ScaffoldIntegration data shape mismatch and added proper TypeScript interfaces
+- Added Cognito Authenticator, CDK snapshot stability (`stripAssetHashes()`), form validation fixes
 
-| Finding | Status | Fix |
-|---------|--------|-----|
-| Frontend → Backend disconnect (REST API calls) | **Fixed** | Rewrote `api.ts` to use AWS SDK (SFNClient, LambdaClient) via Cognito identity pool credentials |
-| `config.ts` still references FastAPI | **Fixed** | Replaced with centralized `amplify.ts` config + re-exports |
-| Duplicate `PORTFOLIO_STANDARDS` constant | **Fixed** | Extracted to `apps/agents/shared/constants.py`, imported by both handlers |
-| `any` types in Planning/Results pages | **Fixed** | Added proper TypeScript interfaces (`ArchitectureOption`, `ReviewFinding`, `ProjectPlan`) |
-| No Cognito auth in frontend | **Fixed** | Added Amplify Authenticator wrapper in App.tsx |
-| CDK snapshot environment sensitivity | **Fixed** | `stripAssetHashes()` helper in snapshot tests |
-| Demo button not filling form fields | **Fixed** | Added `setValue()` from react-hook-form for programmatic updates |
+### Known Issues
 
-### Review 2 — Fixes Completed
-
-| Finding | Status | Fix |
-|---------|--------|-----|
-| ScaffoldIntegration data structure mismatch (CRITICAL) | **Fixed** | Rewrote component to use new data shape (`recommended`, `alternatives`, `questionnaire`) instead of old (`recommended_option`, `technology_stack`, `architecture_options`) |
-| ScaffoldIntegration `any` type prop | **Fixed** | Added proper `ProjectPlan` interface with typed fields |
-| ScaffoldIntegration missing null guards | **Fixed** | Added optional chaining throughout (`basics?.name`, `selected?.stack`, etc.) |
-| Planning.tsx non-null assertion in cleanup | **Fixed** | Changed `clearInterval(pollTimer!)` to `if (pollTimer) clearInterval(pollTimer)` |
-| Planning.tsx missing questionnaire in plan data | **Fixed** | Now includes `questionnaire` from sessionStorage in the plan data stored for Results/Scaffold |
-| review_step dead code try/except | **Fixed** | Removed unnecessary `try/except` around `result["updated_stack"]` assignment |
-| CLAUDE.md outdated "No Cognito auth" note | **Fixed** | Updated to reflect Authenticator integration |
-
-### Remaining Known Issues
-
-- **Zustand store unused** — `store.ts` is defined but no page uses it (pages use `useState` + `sessionStorage`)
+- **Zustand store unused** — `store.ts` is defined but pages use `useState` + `sessionStorage` instead
 - **Session storage fragility** — refreshing loses plan state; DynamoDB persistence planned
-- **Review step Map state** — parallel iterations don't share findings context (intentional: each review is independent)
-- **Environment variable defaults** — `amplify.ts` falls back to empty strings for missing VITE_* vars (deploy script sets them)
+- **Shared types not wired** — `packages/shared-types/` has full interfaces but frontend imports types locally
 
 ### Test Coverage
 
-- Frontend: 102 tests, 99.58% lines, 86.72% branches, 96.26% functions (all thresholds met)
-- Backend: 7 tests, 92% lines (all pass)
+- Frontend: 164 tests, 99%+ lines (all thresholds met)
+- Backend: 7 tests, 91% lines (all pass)
 - CDK: snapshot + assertion tests (all pass)
 
 ### Strengths
@@ -346,10 +326,10 @@ Project Planner AI (Part 1) generates architecture plans; [Scaffold AI](https://
 
 #### P1 — Important
 
-1. **Wire up shared types package**
-   - `packages/shared-types/` exists with complete TypeScript interfaces but is not imported by the frontend
-   - Both projects define `ProjectPlan`, `ArchitectureOption`, review types independently instead
-   - Wire up tsconfig path alias to import from the existing `@project-planner/shared-types` package
+1. **Wire up shared types package** (package exists, not yet imported)
+   - `packages/shared-types/src/index.ts` has complete TypeScript interfaces (`ProjectBasics`, `TechnicalRequirements`, `ArchitectureOption`, `ReviewFinding`, `ScaffoldHandoffRequest`)
+   - Frontend still defines types locally in `Results.tsx`, `ScaffoldIntegration.tsx`, `store.ts`
+   - Wire up tsconfig path alias to import from `@project-planner/shared-types`
    - *Files:* `apps/web/tsconfig.json`, `apps/web/package.json`
 
 2. **Align security scoring**
@@ -415,7 +395,7 @@ Phase 3 (Polish):             #8 Shared standards, #9 Tier sync, #10 Bidirection
 - [ ] DynamoDB persistence for shareable plan URLs
 
 ### Phase 2: Shared Types + Polish
-- [ ] Create shared types package (`ProjectPlan`, `ReviewFinding`, `ScaffoldHandoffRequest`)
+- [ ] Wire `packages/shared-types/` into frontend (package exists with full interfaces, not yet imported)
 - [ ] Align security scoring (risk levels ↔ numeric 0-100)
 - [ ] Refinement chat UI (conversational refinement between questionnaire and planning)
 
