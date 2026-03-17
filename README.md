@@ -19,21 +19,17 @@ See the interactive [Architecture Overview](docs/architecture.html) for a visual
 
 ## Screenshots
 
-| Landing Page | Questionnaire (Part 1) |
+| Landing Page | Questionnaire — Basics |
 |:---:|:---:|
-| ![Landing Page](docs/images/landing_page.png) | ![Questionnaire Part 1](docs/images/project_planner_part_1.png) |
+| ![Landing Page](docs/images/01_landing_page.png) | ![Questionnaire Step 1](docs/images/02_questionnaire_step1.png) |
 
-| Questionnaire (Part 2) | Questionnaire (Part 3) |
+| Questionnaire — Technical | Questionnaire — Preferences |
 |:---:|:---:|
-| ![Questionnaire Part 2](docs/images/project_planner_part_2.png) | ![Questionnaire Part 3](docs/images/project_planner_part_3.png) |
+| ![Questionnaire Step 2](docs/images/03_questionnaire_step2.png) | ![Questionnaire Step 3](docs/images/04_questionnaire_step3.png) |
 
-| Planning in Progress | Results Page |
+| Planning in Progress | Results Overview |
 |:---:|:---:|
-| ![Planning in Progress](docs/images/planning_in_progress.png) | ![Results](docs/images/results.png) |
-
-| Scaffold AI Integration |
-|:---:|
-| ![Scaffold AI Integration](docs/images/scaffold_ai_integration.png) |
+| ![Planning](docs/images/05_planning.png) | ![Results](docs/images/06_results.png) |
 
 ---
 

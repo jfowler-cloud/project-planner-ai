@@ -13,6 +13,10 @@ import PlanningPage from '../pages/Planning'
 import ResultsPage from '../pages/Results'
 import '../index.css'
 
+// Force dark mode before React renders
+localStorage.setItem('theme', 'dark')
+document.documentElement.classList.add('dark')
+
 const MOCK_PLAN = {
   plan_id: 'e2e-plan-001',
   questionnaire: {
