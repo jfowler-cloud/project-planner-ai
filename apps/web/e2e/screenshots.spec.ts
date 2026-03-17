@@ -25,8 +25,12 @@ test('01 - landing page', async ({ page }) => {
 test('02 - results overview', async ({ page }) => {
   await mockBackend(page)
   await page.goto('/e2e.html')
-  // sessionStorage is seeded in e2e-main.tsx — navigate directly to results
-  await page.goto('http://localhost:4173/results/e2e-plan-001')
+  await page.waitForSelector('text=Project Planner AI', { timeout: 8000 })
+  // Use client-side navigation — direct URL 404s because Vite preview has no SPA fallback
+  await page.evaluate(() => {
+    window.history.pushState({}, '', '/results/e2e-plan-001')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
   await page.waitForSelector('text=Flow Log Analyzer', { timeout: 8000 })
   await page.waitForTimeout(400)
   await page.screenshot({ path: `${OUT}/results.png`, fullPage: false })
