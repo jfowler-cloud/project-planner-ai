@@ -33,6 +33,16 @@ export VITE_PLANS_TABLE=$(extract_output "ProjectPlanner-Database" "PlansTableNa
 export VITE_WORKFLOW_ARN=$(extract_output "ProjectPlanner-Workflow" "WorkflowArn")
 export VITE_DISTRIBUTION_DOMAIN=$DISTRIBUTION_DOMAIN
 
+# Scaffold AI CloudFront URL for plan handoff
+SCAFFOLD_DOMAIN=$(aws cloudformation describe-stacks --stack-name ScaffoldAI-Database \
+  --query "Stacks[0].Outputs[?OutputKey=='DistributionDomain'].OutputValue" --output text 2>/dev/null || true)
+if [ -n "$SCAFFOLD_DOMAIN" ] && [ "$SCAFFOLD_DOMAIN" != "None" ]; then
+  export VITE_SCAFFOLD_URL="https://${SCAFFOLD_DOMAIN}"
+  echo "  Scaffold AI: $VITE_SCAFFOLD_URL"
+else
+  echo "  WARNING: ScaffoldAI-Database stack not found — VITE_SCAFFOLD_URL will use localhost fallback"
+fi
+
 echo "  User Pool: $VITE_USER_POOL_ID"
 echo "  Identity Pool: $VITE_IDENTITY_POOL_ID"
 
