@@ -1,0 +1,21 @@
+{
+  "version": "52.0.0",
+  "files": {
+    "ab37396260afbd99656d1d54c92fa99b9ef606c9f7d78f45ea7829f268c0db7e": {
+      "displayName": "ProjectPlanner-Workflow Template",
+      "source": {
+        "path": "ProjectPlanner-Workflow.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "831729228662-us-east-1-13265ab4": {
+          "bucketName": "cdk-hnb659fds-assets-831729228662-us-east-1",
+          "objectKey": "ab37396260afbd99656d1d54c92fa99b9ef606c9f7d78f45ea7829f268c0db7e.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::831729228662:role/cdk-hnb659fds-file-publishing-role-831729228662-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

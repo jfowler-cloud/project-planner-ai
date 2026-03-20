@@ -568,8 +568,11 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
   "Resources": {
     "AgentsLayer9FCB3D19": {
       "Properties": {
+        "CompatibleArchitectures": [
+          "arm64",
+        ],
         "CompatibleRuntimes": [
-          "python3.12",
+          "python3.13",
         ],
         "Content": {
           "S3Bucket": {
@@ -587,6 +590,9 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
         "FinalizePlanFnServiceRoleEE2C9288",
       ],
       "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
         "Code": {
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
@@ -619,7 +625,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
             "Arn",
           ],
         },
-        "Runtime": "python3.12",
+        "Runtime": "python3.13",
         "Timeout": 300,
         "TracingConfig": {
           "Mode": "Active",
@@ -781,6 +787,9 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
         "GeneratePlanFnServiceRole18233F39",
       ],
       "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
         "Code": {
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
@@ -813,7 +822,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
             "Arn",
           ],
         },
-        "Runtime": "python3.12",
+        "Runtime": "python3.13",
         "Timeout": 300,
         "TracingConfig": {
           "Mode": "Active",
@@ -962,6 +971,9 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
         "GetExecutionFnServiceRoleEF50C9E2",
       ],
       "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
         "Code": {
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
@@ -991,7 +1003,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
             "Arn",
           ],
         },
-        "Runtime": "python3.12",
+        "Runtime": "python3.13",
         "Timeout": 30,
         "TracingConfig": {
           "Mode": "Active",
@@ -1119,6 +1131,9 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
         "ReviewStepFnServiceRole98A17A15",
       ],
       "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
         "Code": {
           "S3Bucket": {
             "Fn::Sub": "cdk-hnb659fds-assets-\${AWS::AccountId}-\${AWS::Region}",
@@ -1151,7 +1166,7 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
             "Arn",
           ],
         },
-        "Runtime": "python3.12",
+        "Runtime": "python3.13",
         "Timeout": 300,
         "TracingConfig": {
           "Mode": "Active",
@@ -1296,8 +1311,11 @@ exports[`ProjectPlanner Multi-Stack FunctionsStack matches snapshot 1`] = `
     },
     "SharedLayer27DFABF0": {
       "Properties": {
+        "CompatibleArchitectures": [
+          "arm64",
+        ],
         "CompatibleRuntimes": [
-          "python3.12",
+          "python3.13",
         ],
         "Content": {
           "S3Bucket": {

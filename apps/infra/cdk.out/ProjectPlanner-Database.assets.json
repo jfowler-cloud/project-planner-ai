@@ -1,0 +1,21 @@
+{
+  "version": "52.0.0",
+  "files": {
+    "dc07793053107c04e4d6adacc21c2416b884d7eaa0a9e4d32b6940fe9e05f57a": {
+      "displayName": "ProjectPlanner-Database Template",
+      "source": {
+        "path": "ProjectPlanner-Database.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "831729228662-us-east-1-b5b6e9ee": {
+          "bucketName": "cdk-hnb659fds-assets-831729228662-us-east-1",
+          "objectKey": "dc07793053107c04e4d6adacc21c2416b884d7eaa0a9e4d32b6940fe9e05f57a.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::831729228662:role/cdk-hnb659fds-file-publishing-role-831729228662-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

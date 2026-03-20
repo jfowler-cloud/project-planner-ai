@@ -1,0 +1,878 @@
+{
+ "Description": "Project Planner AI — Lambda functions, layers, IAM",
+ "Resources": {
+  "SharedLayer27DFABF0": {
+   "Type": "AWS::Lambda::LayerVersion",
+   "Properties": {
+    "CompatibleArchitectures": [
+     "arm64"
+    ],
+    "CompatibleRuntimes": [
+     "python3.13"
+    ],
+    "Content": {
+     "S3Bucket": "cdk-hnb659fds-assets-831729228662-us-east-1",
+     "S3Key": "2367bf60d44da874591c8d7a80c82d32348d193adb21b432f9286823e13d8a1d.zip"
+    },
+    "Description": "Project Planner shared utilities — pydantic-settings, powertools, xray"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/SharedLayer/Resource",
+    "aws:asset:path": "asset.2367bf60d44da874591c8d7a80c82d32348d193adb21b432f9286823e13d8a1d",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Content"
+   }
+  },
+  "AgentsLayer9FCB3D19": {
+   "Type": "AWS::Lambda::LayerVersion",
+   "Properties": {
+    "CompatibleArchitectures": [
+     "arm64"
+    ],
+    "CompatibleRuntimes": [
+     "python3.13"
+    ],
+    "Content": {
+     "S3Bucket": "cdk-hnb659fds-assets-831729228662-us-east-1",
+     "S3Key": "8f917a640fadca857f6a0052f8392093f16dd9ffaefc5ec88ed1cf06d55dd54b.zip"
+    },
+    "Description": "Project Planner strands-agents core"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/AgentsLayer/Resource",
+    "aws:asset:path": "asset.8f917a640fadca857f6a0052f8392093f16dd9ffaefc5ec88ed1cf06d55dd54b",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Content"
+   }
+  },
+  "GeneratePlanFnServiceRole18233F39": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GeneratePlanFn/ServiceRole/Resource"
+   }
+  },
+  "GeneratePlanFnServiceRoleDefaultPolicyDED68E63": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "xray:PutTelemetryRecords",
+        "xray:PutTraceSegments"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:bedrock:*::foundation-model/*",
+        "arn:aws:bedrock:us-east-1:831729228662:inference-profile/*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "GeneratePlanFnServiceRoleDefaultPolicyDED68E63",
+    "Roles": [
+     {
+      "Ref": "GeneratePlanFnServiceRole18233F39"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GeneratePlanFn/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "GeneratePlanFn81B4B509": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Architectures": [
+     "arm64"
+    ],
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-831729228662-us-east-1",
+     "S3Key": "cfa2506c29dbdf6db55e8a3017f155a4d543f51df5efbebb431b6a8d66411a65.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DEPLOYMENT_TIER": "testing",
+      "BEDROCK_MODEL_ID": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "PLANNER_PLANS_TABLE": {
+       "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefPlansTableD3E3A972E66ED78C"
+      }
+     }
+    },
+    "FunctionName": "project-planner-generate_plan",
+    "Handler": "handler.handler",
+    "Layers": [
+     {
+      "Ref": "AgentsLayer9FCB3D19"
+     },
+     {
+      "Ref": "SharedLayer27DFABF0"
+     }
+    ],
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "GeneratePlanFnServiceRole18233F39",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.13",
+    "Timeout": 300,
+    "TracingConfig": {
+     "Mode": "Active"
+    }
+   },
+   "DependsOn": [
+    "GeneratePlanFnServiceRoleDefaultPolicyDED68E63",
+    "GeneratePlanFnServiceRole18233F39"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GeneratePlanFn/Resource",
+    "aws:asset:path": "asset.cfa2506c29dbdf6db55e8a3017f155a4d543f51df5efbebb431b6a8d66411a65",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "ReviewStepFnServiceRole98A17A15": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/ReviewStepFn/ServiceRole/Resource"
+   }
+  },
+  "ReviewStepFnServiceRoleDefaultPolicyD9E99A30": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "xray:PutTelemetryRecords",
+        "xray:PutTraceSegments"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:bedrock:*::foundation-model/*",
+        "arn:aws:bedrock:us-east-1:831729228662:inference-profile/*"
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ReviewStepFnServiceRoleDefaultPolicyD9E99A30",
+    "Roles": [
+     {
+      "Ref": "ReviewStepFnServiceRole98A17A15"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/ReviewStepFn/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "ReviewStepFn737002FE": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Architectures": [
+     "arm64"
+    ],
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-831729228662-us-east-1",
+     "S3Key": "207dda841b12dd7303082986ebaba01440784f1aa48e6b571873a400022e4cab.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DEPLOYMENT_TIER": "testing",
+      "BEDROCK_MODEL_ID": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "PLANNER_PLANS_TABLE": {
+       "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefPlansTableD3E3A972E66ED78C"
+      }
+     }
+    },
+    "FunctionName": "project-planner-review_step",
+    "Handler": "handler.handler",
+    "Layers": [
+     {
+      "Ref": "AgentsLayer9FCB3D19"
+     },
+     {
+      "Ref": "SharedLayer27DFABF0"
+     }
+    ],
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "ReviewStepFnServiceRole98A17A15",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.13",
+    "Timeout": 300,
+    "TracingConfig": {
+     "Mode": "Active"
+    }
+   },
+   "DependsOn": [
+    "ReviewStepFnServiceRoleDefaultPolicyD9E99A30",
+    "ReviewStepFnServiceRole98A17A15"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/ReviewStepFn/Resource",
+    "aws:asset:path": "asset.207dda841b12dd7303082986ebaba01440784f1aa48e6b571873a400022e4cab",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "FinalizePlanFnServiceRoleEE2C9288": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/FinalizePlanFn/ServiceRole/Resource"
+   }
+  },
+  "FinalizePlanFnServiceRoleDefaultPolicyA6150987": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "xray:PutTelemetryRecords",
+        "xray:PutTraceSegments"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:bedrock:*::foundation-model/*",
+        "arn:aws:bedrock:us-east-1:831729228662:inference-profile/*"
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputFnGetAttPlansTableD3E3A972ArnE313F4D2"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "FinalizePlanFnServiceRoleDefaultPolicyA6150987",
+    "Roles": [
+     {
+      "Ref": "FinalizePlanFnServiceRoleEE2C9288"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/FinalizePlanFn/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "FinalizePlanFnB917561D": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Architectures": [
+     "arm64"
+    ],
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-831729228662-us-east-1",
+     "S3Key": "a3bbb7d7753f2eeb2e0137d2d5ca604ab70ea4d370cb00049b61758768df997d.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DEPLOYMENT_TIER": "testing",
+      "BEDROCK_MODEL_ID": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "PLANNER_PLANS_TABLE": {
+       "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefPlansTableD3E3A972E66ED78C"
+      }
+     }
+    },
+    "FunctionName": "project-planner-finalize_plan",
+    "Handler": "handler.handler",
+    "Layers": [
+     {
+      "Ref": "AgentsLayer9FCB3D19"
+     },
+     {
+      "Ref": "SharedLayer27DFABF0"
+     }
+    ],
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "FinalizePlanFnServiceRoleEE2C9288",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.13",
+    "Timeout": 300,
+    "TracingConfig": {
+     "Mode": "Active"
+    }
+   },
+   "DependsOn": [
+    "FinalizePlanFnServiceRoleDefaultPolicyA6150987",
+    "FinalizePlanFnServiceRoleEE2C9288"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/FinalizePlanFn/Resource",
+    "aws:asset:path": "asset.a3bbb7d7753f2eeb2e0137d2d5ca604ab70ea4d370cb00049b61758768df997d",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "GetExecutionFnServiceRoleEF50C9E2": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GetExecutionFn/ServiceRole/Resource"
+   }
+  },
+  "GetExecutionFnServiceRoleDefaultPolicy929A2F24": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "states:DescribeExecution",
+        "xray:PutTelemetryRecords",
+        "xray:PutTraceSegments"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "GetExecutionFnServiceRoleDefaultPolicy929A2F24",
+    "Roles": [
+     {
+      "Ref": "GetExecutionFnServiceRoleEF50C9E2"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GetExecutionFn/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "GetExecutionFn9FE2B459": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Architectures": [
+     "arm64"
+    ],
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-831729228662-us-east-1",
+     "S3Key": "b314a20a01a45ce26e64008df2fe4a61591334612e5b9be953daa187bb1ff035.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DEPLOYMENT_TIER": "testing",
+      "BEDROCK_MODEL_ID": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "PLANNER_PLANS_TABLE": {
+       "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefPlansTableD3E3A972E66ED78C"
+      }
+     }
+    },
+    "FunctionName": "project-planner-get_execution",
+    "Handler": "handler.handler",
+    "Layers": [
+     {
+      "Ref": "SharedLayer27DFABF0"
+     }
+    ],
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "GetExecutionFnServiceRoleEF50C9E2",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.13",
+    "Timeout": 30,
+    "TracingConfig": {
+     "Mode": "Active"
+    }
+   },
+   "DependsOn": [
+    "GetExecutionFnServiceRoleDefaultPolicy929A2F24",
+    "GetExecutionFnServiceRoleEF50C9E2"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GetExecutionFn/Resource",
+    "aws:asset:path": "asset.b314a20a01a45ce26e64008df2fe4a61591334612e5b9be953daa187bb1ff035",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "GeneratePlanFnErrorAlarm7BC259FE": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-GeneratePlanFn-Errors",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "GeneratePlanFn81B4B509"
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "Errors",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Statistic": "Sum",
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GeneratePlanFnErrorAlarm/Resource"
+   }
+  },
+  "GeneratePlanFnDurationAlarmD40EFDC1": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-GeneratePlanFn-P99Duration",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "GeneratePlanFn81B4B509"
+      }
+     }
+    ],
+    "EvaluationPeriods": 3,
+    "ExtendedStatistic": "p99",
+    "MetricName": "Duration",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Threshold": 240000,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GeneratePlanFnDurationAlarm/Resource"
+   }
+  },
+  "ReviewStepFnErrorAlarmC83EF5A6": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-ReviewStepFn-Errors",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "ReviewStepFn737002FE"
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "Errors",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Statistic": "Sum",
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/ReviewStepFnErrorAlarm/Resource"
+   }
+  },
+  "ReviewStepFnDurationAlarm0104CE26": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-ReviewStepFn-P99Duration",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "ReviewStepFn737002FE"
+      }
+     }
+    ],
+    "EvaluationPeriods": 3,
+    "ExtendedStatistic": "p99",
+    "MetricName": "Duration",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Threshold": 240000,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/ReviewStepFnDurationAlarm/Resource"
+   }
+  },
+  "FinalizePlanFnErrorAlarmC46B5E04": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-FinalizePlanFn-Errors",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "FinalizePlanFnB917561D"
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "Errors",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Statistic": "Sum",
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/FinalizePlanFnErrorAlarm/Resource"
+   }
+  },
+  "FinalizePlanFnDurationAlarmE49B04E5": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-FinalizePlanFn-P99Duration",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "FinalizePlanFnB917561D"
+      }
+     }
+    ],
+    "EvaluationPeriods": 3,
+    "ExtendedStatistic": "p99",
+    "MetricName": "Duration",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Threshold": 240000,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/FinalizePlanFnDurationAlarm/Resource"
+   }
+  },
+  "GetExecutionFnErrorAlarm0287AF2B": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-GetExecutionFn-Errors",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "GetExecutionFn9FE2B459"
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "Errors",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Statistic": "Sum",
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GetExecutionFnErrorAlarm/Resource"
+   }
+  },
+  "GetExecutionFnDurationAlarm7CFE20DE": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-GetExecutionFn-P99Duration",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "GetExecutionFn9FE2B459"
+      }
+     }
+    ],
+    "EvaluationPeriods": 3,
+    "ExtendedStatistic": "p99",
+    "MetricName": "Duration",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Threshold": 24000,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/GetExecutionFnDurationAlarm/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02PQY7CMAxFz9K9YzKBAwwgzYoFAmm2yKSBhqYJqtOpqih3H6UFidV73/biW2FSmy+UFY0sdN0KZ6+YzpF0CzTyJfH6QswmMm4LgNe4G3Rr4o7YgKPuWhOm/c0faDL9r+nZBg8/g9exyP7m357BUofpFJwp45nH4KyeSlwsg3ZhqEeKusG0ddR3ZTlLzjBXOEe6W3/PoDYSpSD3bAhl9f36YFW49BLPKTbBv06Oc/ismcGH2uCDV39KoVIoqwdbK/rBR9sZPC38B0odqsUkAQAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Functions/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "ExportsOutputFnGetAttGeneratePlanFn81B4B509Arn79899A98": {
+   "Value": {
+    "Fn::GetAtt": [
+     "GeneratePlanFn81B4B509",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Functions:ExportsOutputFnGetAttGeneratePlanFn81B4B509Arn79899A98"
+   }
+  },
+  "ExportsOutputFnGetAttReviewStepFn737002FEArn1CEB1268": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ReviewStepFn737002FE",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Functions:ExportsOutputFnGetAttReviewStepFn737002FEArn1CEB1268"
+   }
+  },
+  "ExportsOutputFnGetAttFinalizePlanFnB917561DArn0216B778": {
+   "Value": {
+    "Fn::GetAtt": [
+     "FinalizePlanFnB917561D",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Functions:ExportsOutputFnGetAttFinalizePlanFnB917561DArn0216B778"
+   }
+  },
+  "ExportsOutputFnGetAttGetExecutionFn9FE2B459Arn45470EA2": {
+   "Value": {
+    "Fn::GetAtt": [
+     "GetExecutionFn9FE2B459",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Functions:ExportsOutputFnGetAttGetExecutionFn9FE2B459Arn45470EA2"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

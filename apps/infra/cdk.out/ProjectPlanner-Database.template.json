@@ -1,0 +1,559 @@
+{
+ "Description": "Project Planner AI — Cognito, DynamoDB, S3/CloudFront hosting, monitoring",
+ "Resources": {
+  "UserPool6BA7E5F2": {
+   "Type": "AWS::Cognito::UserPool",
+   "Properties": {
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": true
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "EmailVerificationMessage": "The verification code to your new account is {####}",
+    "EmailVerificationSubject": "Verify your new account",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false,
+      "RequireUppercase": true
+     }
+    },
+    "Schema": [
+     {
+      "Mutable": true,
+      "Name": "email",
+      "Required": true
+     }
+    ],
+    "SmsVerificationMessage": "The verification code to your new account is {####}",
+    "UserPoolName": "ProjectPlanner-Users",
+    "UsernameAttributes": [
+     "email"
+    ],
+    "VerificationMessageTemplate": {
+     "DefaultEmailOption": "CONFIRM_WITH_CODE",
+     "EmailMessage": "The verification code to your new account is {####}",
+     "EmailSubject": "Verify your new account",
+     "SmsMessage": "The verification code to your new account is {####}"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/UserPool/Resource"
+   }
+  },
+  "UserPoolWebClient4C9370B0": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "implicit",
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "profile",
+     "phone",
+     "email",
+     "openid",
+     "aws.cognito.signin.user.admin"
+    ],
+    "CallbackURLs": [
+     "https://example.com"
+    ],
+    "ClientName": "ProjectPlanner-WebClient",
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "PreventUserExistenceErrors": "ENABLED",
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "UserPoolId": {
+     "Ref": "UserPool6BA7E5F2"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/UserPool/WebClient/Resource"
+   }
+  },
+  "UsersGroup": {
+   "Type": "AWS::Cognito::UserPoolGroup",
+   "Properties": {
+    "GroupName": "users",
+    "UserPoolId": {
+     "Ref": "UserPool6BA7E5F2"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/UsersGroup"
+   }
+  },
+  "AdminsGroup": {
+   "Type": "AWS::Cognito::UserPoolGroup",
+   "Properties": {
+    "GroupName": "admins",
+    "UserPoolId": {
+     "Ref": "UserPool6BA7E5F2"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/AdminsGroup"
+   }
+  },
+  "IdentityPool": {
+   "Type": "AWS::Cognito::IdentityPool",
+   "Properties": {
+    "AllowUnauthenticatedIdentities": false,
+    "CognitoIdentityProviders": [
+     {
+      "ClientId": {
+       "Ref": "UserPoolWebClient4C9370B0"
+      },
+      "ProviderName": {
+       "Fn::GetAtt": [
+        "UserPool6BA7E5F2",
+        "ProviderName"
+       ]
+      }
+     }
+    ],
+    "IdentityPoolName": "ProjectPlanner-IdentityPool"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/IdentityPool"
+   }
+  },
+  "PlansTableD3E3A972": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "planId",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "planId",
+      "KeyType": "HASH"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "SSESpecification": {
+     "SSEEnabled": true
+    },
+    "TableName": "project-planner-plans"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/PlansTable/Resource"
+   }
+  },
+  "HandoffTable4F7B5F4C": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "sessionId",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "sessionId",
+      "KeyType": "HASH"
+     }
+    ],
+    "SSESpecification": {
+     "SSEEnabled": true
+    },
+    "TableName": "project-planner-handoff",
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/HandoffTable/Resource"
+   }
+  },
+  "HostingBucket5DAC2127": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/HostingBucket/Resource"
+   }
+  },
+  "HostingBucketPolicyE887D797": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "HostingBucket5DAC2127"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:GetObject",
+       "Condition": {
+        "StringEquals": {
+         "AWS:SourceArn": {
+          "Fn::Join": [
+           "",
+           [
+            "arn:",
+            {
+             "Ref": "AWS::Partition"
+            },
+            ":cloudfront::",
+            {
+             "Ref": "AWS::AccountId"
+            },
+            ":distribution/",
+            {
+             "Ref": "Distribution830FAC52"
+            }
+           ]
+          ]
+         }
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "cloudfront.amazonaws.com"
+       },
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "HostingBucket5DAC2127",
+            "Arn"
+           ]
+          },
+          "/*"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/HostingBucket/Policy/Resource"
+   }
+  },
+  "OAC5B452445": {
+   "Type": "AWS::CloudFront::OriginAccessControl",
+   "Properties": {
+    "OriginAccessControlConfig": {
+     "Description": "OAC for Project Planner AI frontend",
+     "Name": "ProjectPlannerDatabaseOACE613A7BC",
+     "OriginAccessControlOriginType": "s3",
+     "SigningBehavior": "always",
+     "SigningProtocol": "sigv4"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/OAC/Resource"
+   }
+  },
+  "Distribution830FAC52": {
+   "Type": "AWS::CloudFront::Distribution",
+   "Properties": {
+    "DistributionConfig": {
+     "CustomErrorResponses": [
+      {
+       "ErrorCachingMinTTL": 300,
+       "ErrorCode": 404,
+       "ResponseCode": 200,
+       "ResponsePagePath": "/index.html"
+      },
+      {
+       "ErrorCachingMinTTL": 300,
+       "ErrorCode": 403,
+       "ResponseCode": 200,
+       "ResponsePagePath": "/index.html"
+      }
+     ],
+     "DefaultCacheBehavior": {
+      "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+      "Compress": true,
+      "TargetOriginId": "ProjectPlannerDatabaseDistributionOrigin1978C81F7",
+      "ViewerProtocolPolicy": "redirect-to-https"
+     },
+     "DefaultRootObject": "index.html",
+     "Enabled": true,
+     "HttpVersion": "http2",
+     "IPV6Enabled": true,
+     "Origins": [
+      {
+       "DomainName": {
+        "Fn::GetAtt": [
+         "HostingBucket5DAC2127",
+         "RegionalDomainName"
+        ]
+       },
+       "Id": "ProjectPlannerDatabaseDistributionOrigin1978C81F7",
+       "OriginAccessControlId": {
+        "Fn::GetAtt": [
+         "OAC5B452445",
+         "Id"
+        ]
+       },
+       "S3OriginConfig": {
+        "OriginAccessIdentity": ""
+       }
+      }
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/Distribution/Resource"
+   }
+  },
+  "AlarmTopicD01E77F9": {
+   "Type": "AWS::SNS::Topic",
+   "Properties": {
+    "TopicName": "ProjectPlanner-Alarms"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/AlarmTopic/Resource"
+   }
+  },
+  "PlansTableThrottleAlarmB1EF956B": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Ref": "AlarmTopicD01E77F9"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-DynamoDB-Plans-Throttles",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "TableName",
+      "Value": {
+       "Ref": "PlansTableD3E3A972"
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "SystemErrors",
+    "Namespace": "AWS/DynamoDB",
+    "Period": 60,
+    "Statistic": "Average",
+    "Threshold": 1,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/PlansTableThrottleAlarm/Resource"
+   }
+  },
+  "MonthlyBudget": {
+   "Type": "AWS::Budgets::Budget",
+   "Properties": {
+    "Budget": {
+     "BudgetLimit": {
+      "Amount": 25,
+      "Unit": "USD"
+     },
+     "BudgetName": "project-planner-ai-monthly",
+     "BudgetType": "COST",
+     "CostFilters": {
+      "TagKeyValue": [
+       "user:Project$project-planner-ai"
+      ]
+     },
+     "TimeUnit": "MONTHLY"
+    },
+    "NotificationsWithSubscribers": [
+     {
+      "Notification": {
+       "ComparisonOperator": "GREATER_THAN",
+       "NotificationType": "ACTUAL",
+       "Threshold": 80,
+       "ThresholdType": "PERCENTAGE"
+      },
+      "Subscribers": [
+       {
+        "Address": {
+         "Ref": "AlarmTopicD01E77F9"
+        },
+        "SubscriptionType": "SNS"
+       }
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/MonthlyBudget"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/22PQW4CMQxFz8I+uHToBehUqliBgK6rTBKoIcSj2ClCUe5eZYa2SO3Kz89W/NNA8/QIs4m+8NTY09RjB3kr2pyUvvB7NnQIKAT5jV1cE3nV7sMPf0Pr0QW5H/01r5FSX8XSuiAo1yqLstegz2Q7yDvdeVcXBiiK55Cfkzm54ZkbjWVNHs31V499UcZTsvtIQSBv56uIBwwLYxxzS0HimP4//YIsEbskSKHu3PdFcWDIO+rRDPEq3G5dtJgPyAuv47nOBiiqS/bghGEIWLGojWNK0QwfXCXpkxQVyDo48sNn00DTwGxyZMRpTEHw7GAz1i8ThtueogEAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Database/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "UserPoolId": {
+   "Value": {
+    "Ref": "UserPool6BA7E5F2"
+   }
+  },
+  "UserPoolClientId": {
+   "Value": {
+    "Ref": "UserPoolWebClient4C9370B0"
+   }
+  },
+  "IdentityPoolId": {
+   "Value": {
+    "Ref": "IdentityPool"
+   }
+  },
+  "PlansTableName": {
+   "Value": {
+    "Ref": "PlansTableD3E3A972"
+   }
+  },
+  "HandoffTableName": {
+   "Value": {
+    "Ref": "HandoffTable4F7B5F4C"
+   }
+  },
+  "DistributionDomain": {
+   "Value": {
+    "Fn::GetAtt": [
+     "Distribution830FAC52",
+     "DomainName"
+    ]
+   }
+  },
+  "ExportsOutputRefPlansTableD3E3A972E66ED78C": {
+   "Value": {
+    "Ref": "PlansTableD3E3A972"
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Database:ExportsOutputRefPlansTableD3E3A972E66ED78C"
+   }
+  },
+  "ExportsOutputFnGetAttPlansTableD3E3A972ArnE313F4D2": {
+   "Value": {
+    "Fn::GetAtt": [
+     "PlansTableD3E3A972",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Database:ExportsOutputFnGetAttPlansTableD3E3A972ArnE313F4D2"
+   }
+  },
+  "ExportsOutputRefAlarmTopicD01E77F99DF7FB73": {
+   "Value": {
+    "Ref": "AlarmTopicD01E77F9"
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+   }
+  },
+  "ExportsOutputRefIdentityPoolF5C140BA": {
+   "Value": {
+    "Ref": "IdentityPool"
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Database:ExportsOutputRefIdentityPoolF5C140BA"
+   }
+  },
+  "ExportsOutputFnGetAttHandoffTable4F7B5F4CArnDA3DB2DE": {
+   "Value": {
+    "Fn::GetAtt": [
+     "HandoffTable4F7B5F4C",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "ProjectPlanner-Database:ExportsOutputFnGetAttHandoffTable4F7B5F4CArnDA3DB2DE"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

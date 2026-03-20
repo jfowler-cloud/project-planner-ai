@@ -1,0 +1,349 @@
+{
+ "Description": "Project Planner AI — Step Functions workflow, Cognito roles",
+ "Resources": {
+  "PlannerWorkflowRole1708F58A": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "states.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Workflow/PlannerWorkflow/Role/Resource"
+   }
+  },
+  "PlannerWorkflowRoleDefaultPolicy2FAE3462": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "lambda:InvokeFunction",
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttFinalizePlanFnB917561DArn0216B778"
+        },
+        {
+         "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttGeneratePlanFn81B4B509Arn79899A98"
+        },
+        {
+         "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttReviewStepFn737002FEArn1CEB1268"
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttFinalizePlanFnB917561DArn0216B778"
+           },
+           ":*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttGeneratePlanFn81B4B509Arn79899A98"
+           },
+           ":*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttReviewStepFn737002FEArn1CEB1268"
+           },
+           ":*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "PlannerWorkflowRoleDefaultPolicy2FAE3462",
+    "Roles": [
+     {
+      "Ref": "PlannerWorkflowRole1708F58A"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Workflow/PlannerWorkflow/Role/DefaultPolicy/Resource"
+   }
+  },
+  "PlannerWorkflowC609D970": {
+   "Type": "AWS::StepFunctions::StateMachine",
+   "Properties": {
+    "DefinitionString": {
+     "Fn::Join": [
+      "",
+      [
+       "{\"StartAt\":\"RouteMode\",\"States\":{\"RouteMode\":{\"Type\":\"Choice\",\"Choices\":[{\"And\":[{\"Variable\":\"$.reviewOnly\",\"IsPresent\":true},{\"Variable\":\"$.reviewOnly\",\"BooleanEquals\":true}],\"Next\":\"PrepareReviewOnlyInput\"}],\"Default\":\"GeneratePlan\"},\"GeneratePlan\":{\"Next\":\"IsGenerateOnly\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+       {
+        "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttGeneratePlanFn81B4B509Arn79899A98"
+       },
+       "\",\"Payload.$\":\"$\"}},\"IsGenerateOnly\":{\"Type\":\"Choice\",\"Choices\":[{\"And\":[{\"Variable\":\"$.generateOnly\",\"IsPresent\":true},{\"Variable\":\"$.generateOnly\",\"BooleanEquals\":true}],\"Next\":\"FormatGenerateOutput\"}],\"Default\":\"PrepareReviews\"},\"PrepareReviews\":{\"Type\":\"Pass\",\"Parameters\":{\"plan_id.$\":\"$.plan_id\",\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"alternatives.$\":\"$.alternatives\",\"review_findings.$\":\"$.review_findings\",\"reviewItems\":[{\"category\":\"security\",\"iteration\":1,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"scalability\",\"iteration\":2,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"cost_optimization\",\"iteration\":3,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"reliability\",\"iteration\":4,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"performance\",\"iteration\":5,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"maintainability\",\"iteration\":6,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"developer_experience\",\"iteration\":7,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"compliance\",\"iteration\":8,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"observability\",\"iteration\":9,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"disaster_recovery\",\"iteration\":10,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"}]},\"Next\":\"ReviewCategories\"},\"ReviewCategories\":{\"Type\":\"Map\",\"ResultPath\":\"$.reviewResults\",\"Next\":\"FinalizePlan\",\"ItemsPath\":\"$.reviewItems\",\"ItemProcessor\":{\"ProcessorConfig\":{\"Mode\":\"INLINE\"},\"StartAt\":\"ReviewStep\",\"States\":{\"ReviewStep\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+       {
+        "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttReviewStepFn737002FEArn1CEB1268"
+       },
+       "\",\"Payload.$\":\"$\"}}}},\"MaxConcurrency\":3},\"FinalizePlan\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+       {
+        "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttFinalizePlanFnB917561DArn0216B778"
+       },
+       "\",\"Payload.$\":\"$\"}},\"FormatGenerateOutput\":{\"Type\":\"Pass\",\"Parameters\":{\"plan_id.$\":\"$.plan_id\",\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"alternatives.$\":\"$.alternatives\",\"review_findings.$\":\"$.review_findings\",\"status\":\"COMPLETED\"},\"End\":true},\"PrepareReviewOnlyInput\":{\"Type\":\"Pass\",\"Parameters\":{\"plan_id.$\":\"$.plan_id\",\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"alternatives\":[],\"review_findings\":[]},\"Next\":\"PrepareReviewOnlyItems\"},\"PrepareReviewOnlyItems\":{\"Type\":\"Pass\",\"Parameters\":{\"plan_id.$\":\"$.plan_id\",\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"alternatives.$\":\"$.alternatives\",\"review_findings.$\":\"$.review_findings\",\"reviewItems\":[{\"category\":\"security\",\"iteration\":1,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"scalability\",\"iteration\":2,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"cost_optimization\",\"iteration\":3,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"reliability\",\"iteration\":4,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"performance\",\"iteration\":5,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"maintainability\",\"iteration\":6,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"developer_experience\",\"iteration\":7,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"compliance\",\"iteration\":8,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"observability\",\"iteration\":9,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"},{\"category\":\"disaster_recovery\",\"iteration\":10,\"questionnaire.$\":\"$.questionnaire\",\"recommended.$\":\"$.recommended\",\"review_findings.$\":\"$.review_findings\"}]},\"Next\":\"ReviewOnlyCategories\"},\"ReviewOnlyCategories\":{\"Type\":\"Map\",\"ResultPath\":\"$.reviewResults\",\"Next\":\"ReviewOnlyFinalize\",\"ItemsPath\":\"$.reviewItems\",\"ItemProcessor\":{\"ProcessorConfig\":{\"Mode\":\"INLINE\"},\"StartAt\":\"ReviewOnlyStep\",\"States\":{\"ReviewOnlyStep\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+       {
+        "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttReviewStepFn737002FEArn1CEB1268"
+       },
+       "\",\"Payload.$\":\"$\"}}}},\"MaxConcurrency\":3},\"ReviewOnlyFinalize\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+       {
+        "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttFinalizePlanFnB917561DArn0216B778"
+       },
+       "\",\"Payload.$\":\"$\"}}},\"TimeoutSeconds\":1800}"
+      ]
+     ]
+    },
+    "RoleArn": {
+     "Fn::GetAtt": [
+      "PlannerWorkflowRole1708F58A",
+      "Arn"
+     ]
+    },
+    "StateMachineName": "ProjectPlanner-Workflow"
+   },
+   "DependsOn": [
+    "PlannerWorkflowRoleDefaultPolicy2FAE3462",
+    "PlannerWorkflowRole1708F58A"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Workflow/PlannerWorkflow/Resource"
+   }
+  },
+  "WorkflowFailedAlarm665A3A3C": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmActions": [
+     {
+      "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefAlarmTopicD01E77F99DF7FB73"
+     }
+    ],
+    "AlarmName": "ProjectPlanner-Workflow-ExecutionFailed",
+    "ComparisonOperator": "GreaterThanThreshold",
+    "Dimensions": [
+     {
+      "Name": "StateMachineArn",
+      "Value": {
+       "Ref": "PlannerWorkflowC609D970"
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "ExecutionsFailed",
+    "Namespace": "AWS/States",
+    "Period": 300,
+    "Statistic": "Sum",
+    "Threshold": 0,
+    "TreatMissingData": "notBreaching"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Workflow/WorkflowFailedAlarm/Resource"
+   }
+  },
+  "UserRoleB7C3739B": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRoleWithWebIdentity",
+       "Condition": {
+        "StringEquals": {
+         "cognito-identity.amazonaws.com:aud": {
+          "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefIdentityPoolF5C140BA"
+         }
+        },
+        "ForAnyValue:StringLike": {
+         "cognito-identity.amazonaws.com:amr": "authenticated"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": "cognito-identity.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Workflow/UserRole/Resource"
+   }
+  },
+  "UserRoleDefaultPolicyBC5E062B": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "lambda:InvokeFunction",
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttGetExecutionFn9FE2B459Arn45470EA2"
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "ProjectPlanner-Functions:ExportsOutputFnGetAttGetExecutionFn9FE2B459Arn45470EA2"
+           },
+           ":*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "states:StartExecution",
+       "Effect": "Allow",
+       "Resource": {
+        "Ref": "PlannerWorkflowC609D970"
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputFnGetAttHandoffTable4F7B5F4CArnDA3DB2DE"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "UserRoleDefaultPolicyBC5E062B",
+    "Roles": [
+     {
+      "Ref": "UserRoleB7C3739B"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Workflow/UserRole/DefaultPolicy/Resource"
+   }
+  },
+  "RoleAttachment": {
+   "Type": "AWS::Cognito::IdentityPoolRoleAttachment",
+   "Properties": {
+    "IdentityPoolId": {
+     "Fn::ImportValue": "ProjectPlanner-Database:ExportsOutputRefIdentityPoolF5C140BA"
+    },
+    "Roles": {
+     "authenticated": {
+      "Fn::GetAtt": [
+       "UserRoleB7C3739B",
+       "Arn"
+      ]
+     }
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Workflow/RoleAttachment"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1WMwW7CMBBEv4W7s6UWP4ByQipqBB+AFttplti7Ed4Qocj/XiVc4DQzejNjwe6+YbvBKVfO91WkK8xnRdcbnPJlzhqGdmSnJJwvirnP8IPp6vHAD+mD+SjA3GDO5oiDqTshF8xZUcMRXUccTN3yey6GMMF8kriiVRuJ5J5LfLliXJTRT6iug3kf8Z4WuJpinPwxqUDd8sEHVtJnIxKXp70qui4F1rIMfkcdRi2GxQe45a+HtWAtbDe3TFTdR1ZKAU4v/QffpnNfFQEAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "ProjectPlanner-Workflow/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "WorkflowArn": {
+   "Value": {
+    "Ref": "PlannerWorkflowC609D970"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}
