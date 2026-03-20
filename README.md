@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/jfowler-cloud/project-planner-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/jfowler-cloud/project-planner-ai/actions)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
 ![Step Functions](https://img.shields.io/badge/Step%20Functions-Agent%20Core-orange?style=flat-square)
@@ -153,7 +153,7 @@ See [INTEGRATION.md](INTEGRATION.md) for complete integration documentation.
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 19 + Vite SPA, Tailwind CSS, Zustand, React Hook Form + Zod, React Router v7 |
-| Backend | AWS Lambda (Python 3.12+), Lambda Powertools, Strands SDK |
+| Backend | AWS Lambda (Python 3.13+), Lambda Powertools, Strands SDK |
 | Orchestration | AWS Step Functions (Map state for parallel reviews) |
 | AI | Claude via Amazon Bedrock (Strands SDK) |
 | Database | DynamoDB (on-demand, PITR) |
