@@ -1,3 +1,0 @@
-# Agents layer: strands-agents core
-# NOTE: boto3, pydantic-settings, powertools are already in the shared layer
-strands-agents>=1.0.0,<2
