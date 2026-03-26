@@ -414,6 +414,10 @@ Phase 3 (Polish):             #8 Shared standards, #9 Tier sync, #10 Bidirection
 - [ ] Multi-cloud support (Azure, GCP)
 - [ ] Compliance templates (HIPAA, SOC2)
 
+## UI Formatting Note
+
+This project uses a questionnaire-driven wizard flow (not a chat interface) with Tailwind CSS and React Router. It uses `react-markdown` for rendering plan output but does not yet include `remark-gfm` for GFM tables. It does not have the full UI polish of [recon-ai](https://github.com/jfowler-cloud/recon-ai), which includes CSS custom properties (`:root` dark/light color palette), chat markdown with GFM and session persistence, empty state illustrations, responsive media queries, notification toasts, and keyboard shortcuts. The Tailwind-based styling provides a different design language than the Cloudscape-based projects.
+
 ---
 
 ## Portfolio Context
