@@ -281,9 +281,9 @@ Two full code reviews completed — all critical/high findings resolved:
 
 ### Test Coverage
 
-- Frontend: 164 tests, 99%+ lines (all thresholds met)
-- Backend: 7 tests, 91% lines (all pass)
-- CDK: snapshot + assertion tests (all pass)
+- Frontend: 164 tests across 10 test files, 99%+ lines (all thresholds met)
+- Backend: 14 tests across 15 backend test files, 95% lines (all pass)
+- CDK: 17 snapshot + assertion tests (all pass)
 
 ### Strengths
 
