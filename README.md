@@ -13,7 +13,9 @@ Describe your project in plain language — Project Planner AI refines your idea
 
 ## Architecture Overview
 
-See the interactive [Architecture Overview](docs/architecture.html) for a visual summary of agents, functions, infrastructure, and data flow.
+See the interactive [Architecture Overview](docs/architecture.html) for a visual summary of pages, API, AI integration, and data flow.
+
+![Architecture Overview](docs/images/architecture.png)
 
 ---
 
@@ -279,9 +281,9 @@ Two full code reviews completed — all critical/high findings resolved:
 
 ### Test Coverage
 
-- Frontend: 164 tests, 99%+ lines (all thresholds met)
-- Backend: 7 tests, 91% lines (all pass)
-- CDK: snapshot + assertion tests (all pass)
+- Frontend: 164 tests across 10 test files, 99%+ lines (all thresholds met)
+- Backend: 14 tests across 15 backend test files, 95% lines (all pass)
+- CDK: 17 snapshot + assertion tests (all pass)
 
 ### Strengths
 
@@ -413,6 +415,10 @@ Phase 3 (Polish):             #8 Shared standards, #9 Tier sync, #10 Bidirection
 - [ ] Team collaboration
 - [ ] Multi-cloud support (Azure, GCP)
 - [ ] Compliance templates (HIPAA, SOC2)
+
+## UI Formatting Note
+
+This project uses a questionnaire-driven wizard flow (not a chat interface) with Tailwind CSS and React Router. It uses `react-markdown` for rendering plan output but does not yet include `remark-gfm` for GFM tables. It does not have the full UI polish of [recon-ai](https://github.com/jfowler-cloud/recon-ai), which includes CSS custom properties (`:root` dark/light color palette), chat markdown with GFM and session persistence, empty state illustrations, responsive media queries, notification toasts, and keyboard shortcuts. The Tailwind-based styling provides a different design language than the Cloudscape-based projects.
 
 ---
 
