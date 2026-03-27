@@ -13,7 +13,9 @@ Describe your project in plain language — Project Planner AI refines your idea
 
 ## Architecture Overview
 
-See the interactive [Architecture Overview](docs/architecture.html) for a visual summary of agents, functions, infrastructure, and data flow.
+See the interactive [Architecture Overview](docs/architecture.html) for a visual summary of pages, API, AI integration, and data flow.
+
+![Architecture Overview](docs/images/architecture.png)
 
 ---
 

@@ -1,880 +1,674 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Planner AI - Architecture Overview</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Planner AI — Architecture Overview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0a0e1a;
-      color: #e2e8f0;
-      line-height: 1.6;
-      min-height: 100vh;
-    }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0e1a;
+            color: #c8cdd8;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
 
-    /* ── Header ──────────────────────────────────────────────────────────── */
-    .header {
-      background: linear-gradient(135deg, #1a0a2e 0%, #16213e 40%, #0f3460 100%);
-      padding: 3rem 2rem 2.5rem;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      position: relative;
-      overflow: hidden;
-    }
-    .header::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -10%;
-      width: 60%;
-      height: 200%;
-      background: radial-gradient(ellipse, rgba(232, 0, 28, 0.08) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .header-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      position: relative;
-    }
-    .header-badge {
-      display: inline-block;
-      background: rgba(232, 0, 28, 0.15);
-      color: #ff6b7a;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 0.3rem 0.8rem;
-      border-radius: 999px;
-      border: 1px solid rgba(232, 0, 28, 0.25);
-      margin-bottom: 1rem;
-    }
-    .header h1 {
-      font-size: 2.4rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 0.5rem;
-    }
-    .header p {
-      color: #94a3b8;
-      font-size: 1.05rem;
-      max-width: 700px;
-    }
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a0a2e 0%, #2d1045 30%, #4a1942 60%, #8b1a1a 100%);
+            padding: 3rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at 30% 50%, rgba(232, 0, 28, 0.12) 0%, transparent 70%),
+                        radial-gradient(ellipse at 70% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ff6b8a, #e8001c, #ff4466);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+        .header p {
+            color: #a0a8b8;
+            font-size: 1.1rem;
+            font-weight: 300;
+            position: relative;
+        }
 
-    /* ── Container ────────────────────────────────────────────────────── */
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding: 2rem;
+            flex-wrap: wrap;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #141825 0%, #1a1f30 100%);
+            border: 1px solid #252a3a;
+            border-radius: 12px;
+            padding: 1.25rem 2rem;
+            text-align: center;
+            min-width: 160px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: #3a3f52;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+        }
+        .stat-pages .stat-number { color: #f87171; }
+        .stat-endpoints .stat-number { color: #60a5fa; }
+        .stat-model .stat-number { color: #34d399; }
+        .stat-formats .stat-number { color: #fbbf24; }
 
-    /* ── Stats Row ────────────────────────────────────────────────────── */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-      margin-bottom: 2.5rem;
-    }
-    .stat-card {
-      background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px;
-      padding: 1.25rem;
-      text-align: center;
-      transition: border-color 0.2s;
-    }
-    .stat-card:hover { border-color: rgba(255,255,255,0.12); }
-    .stat-value {
-      font-size: 2rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #e8001c, #ff6b7a);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .stat-label {
-      font-size: 0.8rem;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-top: 0.25rem;
-      font-weight: 500;
-    }
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem 3rem;
+        }
 
-    /* ── Section Titles ──────────────────────────────────────────────── */
-    .section-title {
-      font-size: 1.3rem;
-      font-weight: 700;
-      margin-bottom: 1.25rem;
-      color: #f1f5f9;
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-    }
-    .section-title .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-    }
+        /* Section */
+        .section {
+            margin-bottom: 2.5rem;
+        }
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #e2e6f0;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .section-title .icon {
+            font-size: 1.2rem;
+        }
 
-    /* ── 2x2 Card Grid ───────────────────────────────────────────────── */
-    .card-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.25rem;
-      margin-bottom: 2.5rem;
-    }
-    .card {
-      background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      overflow: hidden;
-      transition: border-color 0.2s, transform 0.2s;
-    }
-    .card:hover {
-      border-color: rgba(255,255,255,0.12);
-      transform: translateY(-2px);
-    }
-    .card-border { height: 3px; }
-    .card-border.amber { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-    .card-border.blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-    .card-border.green { background: linear-gradient(90deg, #10b981, #34d399); }
-    .card-border.pink { background: linear-gradient(90deg, #ec4899, #f472b6); }
-    .card-body { padding: 1.5rem; }
-    .card-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 0.2rem;
-    }
-    .card-subtitle {
-      font-size: 0.78rem;
-      color: #64748b;
-      margin-bottom: 1rem;
-    }
-    .card-item {
-      padding: 0.6rem 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    .card-item:last-child { border-bottom: none; }
-    .card-item-name {
-      font-weight: 600;
-      font-size: 0.9rem;
-      color: #e2e8f0;
-      margin-bottom: 0.15rem;
-    }
-    .card-item-desc {
-      font-size: 0.8rem;
-      color: #94a3b8;
-    }
-    .card-item-meta {
-      font-size: 0.72rem;
-      color: #64748b;
-      margin-top: 0.2rem;
-    }
+        /* Card Grid */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+        }
+        @media (max-width: 768px) {
+            .card-grid { grid-template-columns: 1fr; }
+        }
+        .card {
+            background: #12162480;
+            border: 1px solid #1e2335;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border-top: 3px solid transparent;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .card:hover {
+            background: #141828;
+            border-color: #2a2f45;
+        }
+        .card-backend { border-top-color: #f87171; }
+        .card-pages { border-top-color: #60a5fa; }
+        .card-infra { border-top-color: #34d399; }
+        .card-integration { border-top-color: #fbbf24; }
 
-    /* ── Coverage Bars ───────────────────────────────────────────────── */
-    .coverage-section { margin-bottom: 2.5rem; }
-    .coverage-row {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.7rem 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    .coverage-row:last-child { border-bottom: none; }
-    .coverage-label {
-      width: 160px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      flex-shrink: 0;
-    }
-    .coverage-bar-bg {
-      flex: 1;
-      height: 8px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-    .coverage-bar-fill {
-      height: 100%;
-      border-radius: 99px;
-      transition: width 0.6s ease;
-    }
-    .coverage-bar-fill.high { background: linear-gradient(90deg, #10b981, #34d399); }
-    .coverage-bar-fill.mid { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-    .coverage-bar-fill.low { background: linear-gradient(90deg, #ef4444, #f87171); }
-    .coverage-pct {
-      width: 48px;
-      text-align: right;
-      font-size: 0.85rem;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
+        .card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #e2e6f0;
+            margin-bottom: 0.75rem;
+        }
+        .card-backend h3 { color: #f87171; }
+        .card-pages h3 { color: #60a5fa; }
+        .card-infra h3 { color: #34d399; }
+        .card-integration h3 { color: #fbbf24; }
 
-    /* ── Tables ───────────────────────────────────────────────────────── */
-    .table-section { margin-bottom: 2.5rem; }
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-    .data-table th {
-      text-align: left;
-      padding: 0.75rem 1rem;
-      background: rgba(255,255,255,0.03);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      color: #94a3b8;
-      font-weight: 600;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    .data-table td {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      color: #cbd5e1;
-    }
-    .data-table tr:hover td { background: rgba(255,255,255,0.02); }
-    .table-wrapper {
-      background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      overflow: hidden;
-    }
+        .card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .card li {
+            padding: 0.4rem 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #1a1f30;
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+        .card li:last-child { border-bottom: none; }
+        .card li .bullet {
+            flex-shrink: 0;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-top: 0.5rem;
+        }
+        .card-backend .bullet { background: #f87171; }
+        .card-pages .bullet { background: #60a5fa; }
+        .card-infra .bullet { background: #34d399; }
+        .card-integration .bullet { background: #fbbf24; }
 
-    /* ── Pills ────────────────────────────────────────────────────────── */
-    .pills-section { margin-bottom: 2.5rem; }
-    .pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    .pill {
-      display: inline-block;
-      padding: 0.35rem 0.85rem;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 500;
-      border: 1px solid;
-    }
-    .pill.red { background: rgba(232, 0, 28, 0.1); color: #ff6b7a; border-color: rgba(232, 0, 28, 0.2); }
-    .pill.blue { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
-    .pill.green { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
-    .pill.amber { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
-    .pill.purple { background: rgba(168, 85, 247, 0.1); color: #c084fc; border-color: rgba(168, 85, 247, 0.2); }
-    .pill.pink { background: rgba(236, 72, 153, 0.1); color: #f472b6; border-color: rgba(236, 72, 153, 0.2); }
-    .pill.gray { background: rgba(148, 163, 184, 0.08); color: #94a3b8; border-color: rgba(148, 163, 184, 0.15); }
+        .item-name {
+            font-weight: 600;
+            color: #d1d5e0;
+        }
+        .item-detail {
+            color: #8890a0;
+            font-size: 0.85rem;
+        }
 
-    /* ── Mono pill (inline code) ──────────────────────────────────────── */
-    code.mono {
-      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
-      font-size: 0.78rem;
-      background: rgba(255,255,255,0.06);
-      padding: 0.15rem 0.45rem;
-      border-radius: 4px;
-      color: #e8001c;
-    }
+        /* Coverage Section */
+        .coverage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .coverage-item {
+            background: #12162480;
+            border: 1px solid #1e2335;
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+        .coverage-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #d1d5e0;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        .coverage-pct {
+            font-weight: 700;
+        }
+        .coverage-bar {
+            background: #1a1f30;
+            border-radius: 6px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .coverage-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 1s ease;
+        }
+        .coverage-fill.green { background: linear-gradient(90deg, #059669, #34d399); }
+        .coverage-fill.yellow { background: linear-gradient(90deg, #d97706, #fbbf24); }
+        .coverage-fill.blue { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+        .coverage-fill.purple { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+        .coverage-detail {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.4rem;
+        }
 
-    /* ── Flow Diagram ─────────────────────────────────────────────────── */
-    .flow-section { margin-bottom: 2.5rem; }
-    .flow-diagram {
-      background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      padding: 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      flex-wrap: wrap;
-    }
-    .flow-node {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      padding: 0.8rem 1.2rem;
-      text-align: center;
-      min-width: 120px;
-    }
-    .flow-node-label {
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: #f1f5f9;
-    }
-    .flow-node-sub {
-      font-size: 0.7rem;
-      color: #64748b;
-      margin-top: 0.15rem;
-    }
-    .flow-node.highlight {
-      border-color: rgba(232, 0, 28, 0.3);
-      background: rgba(232, 0, 28, 0.06);
-    }
-    .flow-arrow {
-      color: #475569;
-      font-size: 1.2rem;
-      padding: 0 0.6rem;
-      flex-shrink: 0;
-    }
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #12162480;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #1e2335;
+        }
+        .data-table thead {
+            background: #181d2e;
+        }
+        .data-table th {
+            padding: 0.85rem 1rem;
+            text-align: left;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #8890a0;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid #252a3a;
+        }
+        .data-table td {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #1a1f30;
+        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td {
+            background: #1a1f3040;
+        }
+        .data-table code {
+            background: #1e2335;
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            color: #a78bfa;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        .data-table .gsi {
+            color: #fbbf24;
+            font-size: 0.82rem;
+        }
 
-    /* ── Footer ───────────────────────────────────────────────────────── */
-    .footer {
-      text-align: center;
-      padding: 2rem;
-      color: #475569;
-      font-size: 0.78rem;
-      border-top: 1px solid rgba(255,255,255,0.04);
-      margin-top: 1rem;
-    }
+        /* Tier badges */
+        .tier-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+        .tier-testing {
+            background: #1e3a2f;
+            color: #34d399;
+            border: 1px solid #2d4a3e;
+        }
+        .tier-optimized {
+            background: #2a2518;
+            color: #fbbf24;
+            border: 1px solid #3a3528;
+        }
+        .tier-premium {
+            background: #2d1a3a;
+            color: #c084fc;
+            border: 1px solid #3d2a4a;
+        }
 
-    /* ── Responsive ───────────────────────────────────────────────────── */
-    @media (max-width: 768px) {
-      .stats-row { grid-template-columns: repeat(2, 1fr); }
-      .card-grid { grid-template-columns: 1fr; }
-      .header h1 { font-size: 1.8rem; }
-      .flow-diagram { flex-direction: column; }
-      .flow-arrow { transform: rotate(90deg); }
-    }
-  </style>
+        /* Tech Stack Pills */
+        .pill-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.4rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            border: 1px solid;
+            transition: transform 0.15s;
+        }
+        .pill:hover { transform: translateY(-1px); }
+        .pill-frontend { background: #1a1028; color: #f472b6; border-color: #2d1a3a; }
+        .pill-backend { background: #0f1f1a; color: #34d399; border-color: #1a2f28; }
+        .pill-ai { background: #1a1528; color: #a78bfa; border-color: #2a2040; }
+        .pill-infra { background: #101828; color: #60a5fa; border-color: #1a2838; }
+        .pill-testing { background: #1a1a10; color: #fbbf24; border-color: #2a2a18; }
+        .pill-security { background: #1f1018; color: #fb7185; border-color: #2f1a28; }
+
+        /* Auth Section */
+        .auth-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        @media (max-width: 768px) {
+            .auth-grid { grid-template-columns: 1fr; }
+        }
+        .auth-card {
+            background: #12162480;
+            border: 1px solid #1e2335;
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+        .auth-card h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+        }
+        .auth-card.users h4 { color: #34d399; }
+        .auth-card.admins h4 { color: #60a5fa; }
+        .auth-card.leadership h4 { color: #fbbf24; }
+        .auth-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .auth-card li {
+            font-size: 0.85rem;
+            padding: 0.25rem 0;
+            color: #8890a0;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #4a5060;
+            font-size: 0.8rem;
+            border-top: 1px solid #1a1f30;
+            margin-top: 1rem;
+        }
+        .footer a {
+            color: #e8001c;
+            text-decoration: none;
+        }
+        .footer a:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════════════════════════════════
-       HEADER
-       ═══════════════════════════════════════════════════════════════════ -->
-  <div class="header">
-    <div class="header-inner">
-      <span class="header-badge">Architecture Overview</span>
-      <h1>Project Planner AI</h1>
-      <p>Conversational AI project planner. Users answer a 3-step questionnaire, then AI generates architecture options with critical reviews via Step Functions + Lambda. Results hand off to Scaffold AI for code generation.</p>
+<!-- Header -->
+<div class="header">
+    <h1>Project Planner AI</h1>
+    <p>AI-Powered Conversational Project Planning</p>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-card stat-pages">
+        <span class="stat-number">4</span>
+        <span class="stat-label">Pages</span>
     </div>
-  </div>
-
-  <div class="container">
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         STATS ROW
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-value">1</div>
-        <div class="stat-label">Agent Module</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">4</div>
-        <div class="stat-label">Lambda Functions</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">3</div>
-        <div class="stat-label">CDK Stacks</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">2</div>
-        <div class="stat-label">DynamoDB Tables</div>
-      </div>
+    <div class="stat-card stat-endpoints">
+        <span class="stat-number">2</span>
+        <span class="stat-label">API Endpoints</span>
     </div>
+    <div class="stat-card stat-model">
+        <span class="stat-number">1</span>
+        <span class="stat-label">AI Model</span>
+    </div>
+    <div class="stat-card stat-formats">
+        <span class="stat-number">3</span>
+        <span class="stat-label">Output Formats</span>
+    </div>
+</div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         WORKFLOW FLOW DIAGRAM
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="flow-section">
-      <h2 class="section-title"><span class="dot" style="background:#e8001c"></span> Execution Flow</h2>
-      <div class="flow-diagram">
-        <div class="flow-node">
-          <div class="flow-node-label">Questionnaire</div>
-          <div class="flow-node-sub">3-step wizard</div>
+<div class="container">
+
+    <!-- Architecture Cards -->
+    <div class="section">
+        <div class="section-title"><span class="icon">&#9672;</span> Architecture Components</div>
+        <div class="card-grid">
+
+            <!-- AI Backend -->
+            <div class="card card-backend">
+                <h3>AI Backend</h3>
+                <ul>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">FastAPI + Bedrock/Anthropic Claude</div>
+                            <div class="item-detail">Python 3.12+ backend with Pydantic v2 validation. Supports both AWS Bedrock and direct Anthropic API for Claude model access.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">SSE Streaming</div>
+                            <div class="item-detail">Real-time planning responses via Server-Sent Events. <code>POST /api/v1/plan</code> starts Step Functions execution; <code>GET /api/v1/plan/status/{arn}</code> polls for results.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Architecture Option Generation</div>
+                            <div class="item-detail">Generates 3-5 architecture approaches with security, observability, and testing built in. Parallel critical reviews (up to 10 categories) run via Step Functions Map state.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Scaffold AI Handoff</div>
+                            <div class="item-detail">Writes completed plan data to DynamoDB with session ID. One-click transfer to Scaffold AI for code generation and infrastructure-as-code.</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Frontend Pages -->
+            <div class="card card-pages">
+                <h3>Frontend Pages</h3>
+                <ul>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Home</div>
+                            <div class="item-detail">Landing page with feature overview, demo mode, and quick-start entry point to the questionnaire.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Questionnaire</div>
+                            <div class="item-detail">3-step wizard built with <code>react-hook-form</code> + <code>zod</code> validation. Captures project basics, technical requirements, and preferences.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Planning</div>
+                            <div class="item-detail">SSE stream with real-time AI response display. Polls Step Functions execution status until architecture options are generated.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Results</div>
+                            <div class="item-detail">4-tab view (overview, architecture, costs, security). Selectable architecture options, critical reviews, and Scaffold AI handoff button.</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Infrastructure -->
+            <div class="card card-infra">
+                <h3>Infrastructure</h3>
+                <ul>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">React 19 + Vite + Tailwind CSS</div>
+                            <div class="item-detail">Single-page application with Vite bundler and Tailwind CSS utility-first styling. Red accent palette (<code>#e8001c</code>).</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Zustand State Management</div>
+                            <div class="item-detail">Lightweight global state for wizard flow. Session storage for cross-page data transfer between questionnaire, planning, and results.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">React Router v7</div>
+                            <div class="item-detail">Client-side routing with <code>useNavigate</code> and <code>useParams</code>. Error boundaries on <code>/planning</code> and <code>/results</code> pages.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Dark/Light Mode</div>
+                            <div class="item-detail">CSS custom properties with <code>pp-</code> prefix. Dark mode default, preference persisted to localStorage, sun/moon toggle in navigation.</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Integration -->
+            <div class="card card-integration">
+                <h3>Integration</h3>
+                <ul>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Scaffold AI Handoff</div>
+                            <div class="item-detail">Writes plan to DynamoDB, opens Scaffold AI with session ID. Structured JSON transfer with shared TypeScript types. Falls back to URL parameters if API unavailable.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Mermaid.js Diagrams</div>
+                            <div class="item-detail">Architecture diagrams rendered inline using Mermaid.js. Visualizes generated architecture options and data flow.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">Export Options</div>
+                            <div class="item-detail">Markdown and JSON export formats for completed plans. PDF export planned but not yet implemented.</div>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="bullet"></span>
+                        <div>
+                            <div class="item-name">GitHub Repository Generation</div>
+                            <div class="item-detail">Generate a GitHub repo from a completed plan via <code>POST /api/v1/generate-repo</code> with <code>X-GitHub-Token</code> header authentication.</div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
         </div>
-        <div class="flow-arrow">&rarr;</div>
-        <div class="flow-node highlight">
-          <div class="flow-node-label">Step Functions</div>
-          <div class="flow-node-sub">ProjectPlanner-Workflow</div>
+    </div>
+
+    <!-- Deployment Tiers -->
+    <div class="section">
+        <div class="section-title"><span class="icon">&#9650;</span> Deployment Tiers</div>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tier</th>
+                        <th>Planning Model</th>
+                        <th>Review Model</th>
+                        <th>Recommendation Model</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="tier-badge tier-testing">testing</span></td>
+                        <td>Claude Haiku 4.5</td>
+                        <td>Claude Haiku 4.5</td>
+                        <td>Claude Haiku 4.5</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tier-badge tier-optimized">optimized</span></td>
+                        <td>Claude Sonnet 4.5</td>
+                        <td>Claude Haiku 4.5</td>
+                        <td>Claude Sonnet 4.5</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tier-badge tier-premium">premium</span></td>
+                        <td>Claude Opus 4.5</td>
+                        <td>Claude Opus 4.5</td>
+                        <td>Claude Opus 4.5</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <div class="flow-arrow">&rarr;</div>
-        <div class="flow-node">
-          <div class="flow-node-label">Generate Plan</div>
-          <div class="flow-node-sub">Strands + Bedrock</div>
+        <div class="item-detail" style="margin-top: 0.75rem;">
+            Controlled via <code>DEPLOYMENT_TIER</code> env var. Model override available with <code>BEDROCK_MODEL_ID</code>.
         </div>
-        <div class="flow-arrow">&rarr;</div>
-        <div class="flow-node">
-          <div class="flow-node-label">Parallel Reviews</div>
-          <div class="flow-node-sub">Map state &times; 10</div>
+    </div>
+
+    <!-- API Routes -->
+    <div class="section">
+        <div class="section-title"><span class="icon">&#8635;</span> API Routes</div>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Path</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>GET</code></td>
+                        <td><code>/health</code></td>
+                        <td>Health check</td>
+                    </tr>
+                    <tr>
+                        <td><code>POST</code></td>
+                        <td><code>/api/v1/plan</code></td>
+                        <td>Start plan generation — returns <code>{execution_arn, plan_id}</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>GET</code></td>
+                        <td><code>/api/v1/plan/status/{arn}</code></td>
+                        <td>Poll Step Functions execution status</td>
+                    </tr>
+                    <tr>
+                        <td><code>GET</code></td>
+                        <td><code>/api/v1/plan/{project_id}</code></td>
+                        <td>Retrieve a completed plan</td>
+                    </tr>
+                    <tr>
+                        <td><code>GET</code></td>
+                        <td><code>/api/v1/templates</code></td>
+                        <td>Common project templates</td>
+                    </tr>
+                    <tr>
+                        <td><code>POST</code></td>
+                        <td><code>/api/v1/generate-repo</code></td>
+                        <td>Generate GitHub repo from plan (X-GitHub-Token header)</td>
+                    </tr>
+                    <tr>
+                        <td><code>GET</code></td>
+                        <td><code>/api/v1/rate-limit/stats</code></td>
+                        <td>Rate limit quota for caller (10 plans/hour)</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <div class="flow-arrow">&rarr;</div>
-        <div class="flow-node">
-          <div class="flow-node-label">Finalize</div>
-          <div class="flow-node-sub">Persist to DynamoDB</div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="section">
+        <div class="section-title"><span class="icon">&#9881;</span> Tech Stack</div>
+        <div class="pill-container">
+            <span class="pill pill-frontend">React 19</span>
+            <span class="pill pill-frontend">Vite</span>
+            <span class="pill pill-frontend">Tailwind CSS</span>
+            <span class="pill pill-frontend">Zustand</span>
+            <span class="pill pill-frontend">React Router</span>
+            <span class="pill pill-backend">FastAPI</span>
+            <span class="pill pill-backend">Python</span>
+            <span class="pill pill-ai">Bedrock</span>
+            <span class="pill pill-ai">Claude</span>
+            <span class="pill pill-infra">Mermaid.js</span>
+            <span class="pill pill-testing">zod</span>
         </div>
-        <div class="flow-arrow">&rarr;</div>
-        <div class="flow-node">
-          <div class="flow-node-label">Results</div>
-          <div class="flow-node-sub">Scaffold AI handoff</div>
-        </div>
-      </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════
-         2x2 CARD GRID
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="card-grid">
+</div>
 
-      <!-- AGENTS -->
-      <div class="card">
-        <div class="card-border amber"></div>
-        <div class="card-body">
-          <div class="card-title">Agents</div>
-          <div class="card-subtitle">apps/agents/ &mdash; Shared config and DB helpers</div>
-
-          <div class="card-item">
-            <div class="card-item-name">shared/config.py</div>
-            <div class="card-item-desc">Central <code class="mono">AppConfig</code> via Pydantic Settings. Tiered model selection: Haiku 4.5 (testing), Sonnet 4.5 (optimized), Opus 4.5 (premium). Max tokens 4096, temperature 0.3.</div>
-            <div class="card-item-meta">Bedrock model ID &bull; deployment tier &bull; review categories</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">shared/db.py</div>
-            <div class="card-item-desc">DynamoDB helpers: <code class="mono">get_plan</code>, <code class="mono">put_item</code>, <code class="mono">update_item</code> with dynamic UpdateExpression builder.</div>
-            <div class="card-item-meta">boto3 resource &bull; mirrors PSP db.py pattern</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">shared/constants.py</div>
-            <div class="card-item-desc">Portfolio standards constant (<code class="mono">PORTFOLIO_STANDARDS</code>) baked into AI system prompts for generate and review agents.</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FUNCTIONS -->
-      <div class="card">
-        <div class="card-border blue"></div>
-        <div class="card-body">
-          <div class="card-title">Lambda Functions</div>
-          <div class="card-subtitle">apps/functions/ &mdash; Python 3.12, Powertools, X-Ray tracing</div>
-
-          <div class="card-item">
-            <div class="card-item-name">generate_plan</div>
-            <div class="card-item-desc">Creates initial architecture plan from questionnaire input. Strands Agent with Bedrock generates recommended stack + 2-3 alternatives with Mermaid diagrams.</div>
-            <div class="card-item-meta">512 MB &bull; 5 min timeout &bull; Bedrock invoke</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">review_step</div>
-            <div class="card-item-desc">Runs one review iteration. Invoked 10x in parallel via Map state across categories: security, scalability, cost, reliability, performance, maintainability, DX, compliance, observability, DR.</div>
-            <div class="card-item-meta">512 MB &bull; 5 min timeout &bull; max concurrency 3</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">finalize_plan</div>
-            <div class="card-item-desc">Aggregates review findings from Map results, persists completed plan to DynamoDB <code class="mono">project-planner-plans</code> table.</div>
-            <div class="card-item-meta">512 MB &bull; 5 min timeout &bull; DynamoDB write</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">get_execution</div>
-            <div class="card-item-desc">Polls Step Functions execution status. Returns plan data on SUCCEEDED, error on FAILED/TIMED_OUT/ABORTED. Invoked by frontend via Cognito identity pool credentials.</div>
-            <div class="card-item-meta">256 MB &bull; 30s timeout &bull; states:DescribeExecution</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- INFRA -->
-      <div class="card">
-        <div class="card-border green"></div>
-        <div class="card-body">
-          <div class="card-title">Infrastructure</div>
-          <div class="card-subtitle">apps/infra/ &mdash; CDK v2 TypeScript, 3 stacks</div>
-
-          <div class="card-item">
-            <div class="card-item-name">DatabaseStack</div>
-            <div class="card-item-desc">Cognito User Pool + Identity Pool, DynamoDB tables, S3 + CloudFront hosting, SNS alarm topic, CloudWatch throttle alarms, monthly budget ($25 cap).</div>
-            <div class="card-item-meta">Groups: users, admins &bull; OAC for S3 &bull; PITR enabled</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">FunctionsStack</div>
-            <div class="card-item-desc">4 Lambda functions with PythonLayerVersion (shared + agents layers). Bedrock IAM policy, per-function CloudWatch error and P99 duration alarms.</div>
-            <div class="card-item-meta">Props: deploymentTier, modelId, plansTable, alarmTopic</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">WorkflowStack</div>
-            <div class="card-item-desc">Step Functions state machine with 3 modes: full flow, generateOnly, reviewOnly. Cognito identity pool role bindings for SFN start, Lambda invoke, and handoff table write.</div>
-            <div class="card-item-meta">30 min timeout &bull; execution failure alarm &bull; SFN metrics</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- WEB -->
-      <div class="card">
-        <div class="card-border pink"></div>
-        <div class="card-body">
-          <div class="card-title">Frontend</div>
-          <div class="card-subtitle">apps/web/ &mdash; React 19 + Vite + Tailwind</div>
-
-          <div class="card-item">
-            <div class="card-item-name">Pages (4)</div>
-            <div class="card-item-desc"><code class="mono">Home</code> landing, <code class="mono">Questionnaire</code> 3-step wizard (basics, technical, preferences), <code class="mono">Planning</code> execution progress, <code class="mono">Results</code> with architecture cards.</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">State Management</div>
-            <div class="card-item-desc">Zustand store (<code class="mono">useWizardStore</code>) tracks wizard step, questionnaire data, plan output, progress events, GitHub token (session-only), and repo URL.</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">API Layer</div>
-            <div class="card-item-desc">AWS SDK direct calls via Cognito identity pool credentials. <code class="mono">startPlanExecution</code>, <code class="mono">startReviewExecution</code>, <code class="mono">pollExecution</code>, <code class="mono">exportToScaffold</code>. No API Gateway.</div>
-          </div>
-          <div class="card-item">
-            <div class="card-item-name">Components</div>
-            <div class="card-item-desc"><code class="mono">ThemeProvider</code> (dark mode default), <code class="mono">ErrorBoundary</code>, <code class="mono">ScaffoldIntegration</code> slide-out panel for plan handoff to Scaffold AI via DynamoDB session.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         COVERAGE
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="coverage-section">
-      <h2 class="section-title"><span class="dot" style="background:#10b981"></span> Test Coverage</h2>
-
-      <div class="coverage-row">
-        <div class="coverage-label">Functions (pytest)</div>
-        <div class="coverage-bar-bg"><div class="coverage-bar-fill high" style="width:91%"></div></div>
-        <div class="coverage-pct">91%</div>
-      </div>
-      <div class="coverage-row">
-        <div class="coverage-label">Agents (pytest)</div>
-        <div class="coverage-bar-bg"><div class="coverage-bar-fill high" style="width:100%"></div></div>
-        <div class="coverage-pct">100%</div>
-      </div>
-      <div class="coverage-row">
-        <div class="coverage-label">generate_plan</div>
-        <div class="coverage-bar-bg"><div class="coverage-bar-fill mid" style="width:81%"></div></div>
-        <div class="coverage-pct">81%</div>
-      </div>
-      <div class="coverage-row">
-        <div class="coverage-label">review_step</div>
-        <div class="coverage-bar-bg"><div class="coverage-bar-fill mid" style="width:77%"></div></div>
-        <div class="coverage-pct">77%</div>
-      </div>
-      <div class="coverage-row">
-        <div class="coverage-label">finalize_plan</div>
-        <div class="coverage-bar-bg"><div class="coverage-bar-fill high" style="width:92%"></div></div>
-        <div class="coverage-pct">92%</div>
-      </div>
-      <div class="coverage-row">
-        <div class="coverage-label">get_execution</div>
-        <div class="coverage-bar-bg"><div class="coverage-bar-fill mid" style="width:85%"></div></div>
-        <div class="coverage-pct">85%</div>
-      </div>
-      <div class="coverage-row">
-        <div class="coverage-label">Frontend (Vitest)</div>
-        <div class="coverage-bar-bg"><div class="coverage-bar-fill high" style="width:95%"></div></div>
-        <div class="coverage-pct">95%</div>
-      </div>
-      <div class="coverage-row">
-        <div class="coverage-label">CDK (Jest snapshots)</div>
-        <div class="coverage-bar-bg"><div class="coverage-bar-fill high" style="width:100%"></div></div>
-        <div class="coverage-pct">&mdash;</div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         DYNAMODB TABLES
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="table-section">
-      <h2 class="section-title"><span class="dot" style="background:#3b82f6"></span> DynamoDB Tables</h2>
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Table</th>
-              <th>Partition Key</th>
-              <th>Sort Key</th>
-              <th>GSIs</th>
-              <th>Billing</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code class="mono">project-planner-plans</code></td>
-              <td><code class="mono">planId</code> (S)</td>
-              <td>&mdash;</td>
-              <td>&mdash;</td>
-              <td>PAY_PER_REQUEST</td>
-              <td>PITR enabled, RETAIN on delete, throttle alarm via SNS</td>
-            </tr>
-            <tr>
-              <td><code class="mono">project-planner-handoff</code></td>
-              <td><code class="mono">sessionId</code> (S)</td>
-              <td>&mdash;</td>
-              <td>&mdash;</td>
-              <td>PAY_PER_REQUEST</td>
-              <td>TTL on <code class="mono">ttl</code> attribute (24h expiry), DESTROY on delete</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         AUTH (COGNITO)
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="table-section">
-      <h2 class="section-title"><span class="dot" style="background:#a855f7"></span> Authentication (Cognito)</h2>
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Resource</th>
-              <th>Configuration</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>User Pool</td>
-              <td><code class="mono">ProjectPlanner-Users</code></td>
-              <td>Email sign-in, auto-verify email, self-signup disabled, password: 8+ chars (upper, lower, digits), RETAIN on delete</td>
-            </tr>
-            <tr>
-              <td>Groups</td>
-              <td><code class="mono">users</code>, <code class="mono">admins</code></td>
-              <td>Two Cognito user pool groups for role-based access control</td>
-            </tr>
-            <tr>
-              <td>Web Client</td>
-              <td><code class="mono">ProjectPlanner-WebClient</code></td>
-              <td>Auth flows: USER_PASSWORD_AUTH, USER_SRP_AUTH. Prevent user existence errors enabled.</td>
-            </tr>
-            <tr>
-              <td>Identity Pool</td>
-              <td><code class="mono">ProjectPlanner-IdentityPool</code></td>
-              <td>Authenticated only. Role grants: SFN StartExecution, Lambda Invoke (get_execution), DynamoDB write (handoff table).</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         DEPLOYMENT TIERS
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="table-section">
-      <h2 class="section-title"><span class="dot" style="background:#f59e0b"></span> Deployment Tiers</h2>
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Tier</th>
-              <th>Bedrock Model</th>
-              <th>Model ID</th>
-              <th>Use Case</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="pill green">testing</span></td>
-              <td>Claude Haiku 4.5</td>
-              <td><code class="mono">us.anthropic.claude-haiku-4-5-20251001-v1:0</code></td>
-              <td>Development, CI, cost-sensitive testing</td>
-            </tr>
-            <tr>
-              <td><span class="pill amber">optimized</span></td>
-              <td>Claude Sonnet 4.5</td>
-              <td><code class="mono">us.anthropic.claude-sonnet-4-5-20250929-v1:0</code></td>
-              <td>Production workloads, balanced cost/quality</td>
-            </tr>
-            <tr>
-              <td><span class="pill red">premium</span></td>
-              <td>Claude Opus 4.5</td>
-              <td><code class="mono">us.anthropic.claude-opus-4-5-20251101-v1:0</code></td>
-              <td>Maximum quality, complex architecture reviews</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         REVIEW CATEGORIES
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="table-section">
-      <h2 class="section-title"><span class="dot" style="background:#ec4899"></span> Review Categories (10 parallel reviews)</h2>
-      <div class="pills">
-        <span class="pill red">Security</span>
-        <span class="pill blue">Scalability</span>
-        <span class="pill green">Cost Optimization</span>
-        <span class="pill amber">Reliability</span>
-        <span class="pill purple">Performance</span>
-        <span class="pill pink">Maintainability</span>
-        <span class="pill blue">Developer Experience</span>
-        <span class="pill gray">Compliance</span>
-        <span class="pill green">Observability</span>
-        <span class="pill red">Disaster Recovery</span>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         STEP FUNCTIONS MODES
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="table-section">
-      <h2 class="section-title"><span class="dot" style="background:#e8001c"></span> Workflow Modes</h2>
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Mode</th>
-              <th>Input Flag</th>
-              <th>Flow</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Full Flow</td>
-              <td><code class="mono">(default)</code></td>
-              <td>GeneratePlan &rarr; PrepareReviews &rarr; Map(ReviewStep &times;10, concurrency 3) &rarr; FinalizePlan</td>
-            </tr>
-            <tr>
-              <td>Generate Only</td>
-              <td><code class="mono">{ generateOnly: true }</code></td>
-              <td>GeneratePlan &rarr; FormatOutput (skip reviews)</td>
-            </tr>
-            <tr>
-              <td>Review Only</td>
-              <td><code class="mono">{ reviewOnly: true }</code></td>
-              <td>PrepareInput &rarr; Map(ReviewStep &times;10, concurrency 3) &rarr; FinalizePlan</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         MONITORING
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="table-section">
-      <h2 class="section-title"><span class="dot" style="background:#ef4444"></span> Monitoring &amp; Alarms</h2>
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Alarm</th>
-              <th>Metric</th>
-              <th>Threshold</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>DynamoDB Plans Throttles</td>
-              <td>SystemErrors (1 min)</td>
-              <td>&ge; 1</td>
-              <td>SNS &rarr; ProjectPlanner-Alarms</td>
-            </tr>
-            <tr>
-              <td>Lambda Error Alarms (&times;4)</td>
-              <td>Errors (5 min)</td>
-              <td>&ge; 1</td>
-              <td>SNS &rarr; ProjectPlanner-Alarms</td>
-            </tr>
-            <tr>
-              <td>Lambda P99 Duration (&times;4)</td>
-              <td>Duration p99 (5 min)</td>
-              <td>80% of timeout</td>
-              <td>SNS &rarr; ProjectPlanner-Alarms</td>
-            </tr>
-            <tr>
-              <td>Workflow Execution Failed</td>
-              <td>ExecutionsFailed (5 min)</td>
-              <td>&gt; 0</td>
-              <td>SNS &rarr; ProjectPlanner-Alarms</td>
-            </tr>
-            <tr>
-              <td>Monthly Budget</td>
-              <td>AWS Budgets (COST)</td>
-              <td>80% of $25/mo</td>
-              <td>SNS notification</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         TECH STACK PILLS
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="pills-section">
-      <h2 class="section-title"><span class="dot" style="background:#60a5fa"></span> Tech Stack</h2>
-      <div class="pills">
-        <span class="pill red">React 19</span>
-        <span class="pill red">Vite</span>
-        <span class="pill red">Tailwind CSS</span>
-        <span class="pill pink">React Router v7</span>
-        <span class="pill pink">Zustand</span>
-        <span class="pill blue">AWS Amplify Auth</span>
-        <span class="pill blue">AWS SDK v3</span>
-        <span class="pill green">Python 3.12</span>
-        <span class="pill green">Lambda Powertools</span>
-        <span class="pill green">Strands Agents SDK</span>
-        <span class="pill green">Amazon Bedrock</span>
-        <span class="pill green">Pydantic Settings</span>
-        <span class="pill amber">CDK v2 (TypeScript)</span>
-        <span class="pill amber">PythonLayerVersion</span>
-        <span class="pill purple">Step Functions</span>
-        <span class="pill purple">DynamoDB</span>
-        <span class="pill purple">Cognito</span>
-        <span class="pill purple">S3 + CloudFront</span>
-        <span class="pill purple">X-Ray Tracing</span>
-        <span class="pill gray">Vitest</span>
-        <span class="pill gray">pytest + moto</span>
-        <span class="pill gray">Jest (CDK snapshots)</span>
-        <span class="pill gray">Ruff (linting)</span>
-        <span class="pill gray">uv (Python deps)</span>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════
-         KNOWN LIMITATIONS
-         ═══════════════════════════════════════════════════════════════════ -->
-    <div class="table-section">
-      <h2 class="section-title"><span class="dot" style="background:#64748b"></span> Known Limitations</h2>
-      <div class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Area</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Refinement chat UI</td>
-              <td>Not yet built</td>
-            </tr>
-            <tr>
-              <td>Session persistence</td>
-              <td>Session storage only (DynamoDB persistence planned)</td>
-            </tr>
-            <tr>
-              <td>Cognito auth</td>
-              <td>Wired up (Authenticator wrapper + identity pool) but needs real user testing</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════════════════
-       FOOTER
-       ═══════════════════════════════════════════════════════════════════ -->
-  <div class="footer">
-    Generated March 2026 &mdash; Project Planner AI Architecture Overview
-  </div>
+<!-- Footer -->
+<div class="footer">
+    Generated on 2026-03-27 &nbsp;|&nbsp; <a href="https://github.com/jfowler-cloud/project-planner-ai">Project Planner AI</a> &nbsp;|&nbsp; Dark mode by default, red accent (#e8001c)
+</div>
 
 </body>
 </html>
