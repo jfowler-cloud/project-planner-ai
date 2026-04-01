@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Project Planner AI, please report it by emailing **jfowler.cloud@gmail.com** with the subject line "Security Vulnerability Report".
+If you discover a security vulnerability in Project Planner AI, please report it by opening a GitHub issue or contacting the repository owner with the subject line "Security Vulnerability Report".
 
 **Please do NOT create a public GitHub issue for security vulnerabilities.**
 
