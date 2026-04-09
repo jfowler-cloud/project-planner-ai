@@ -21,7 +21,7 @@
     "@aws-sdk/client-lambda": "^3.1006.0",
     "@aws-sdk/client-sfn": "^3.1006.0",
     "@aws-sdk/lib-dynamodb": "^3.1007.0",
-    "@hookform/resolvers": "^3.9.1",
+    "@hookform/resolvers": "^5.2.2",
     "aws-amplify": "^6.16.2",
     "mermaid": "^11.4.1",
     "react": "^19.0.0",
